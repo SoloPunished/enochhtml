@@ -137,3 +137,98 @@
         enemies.push({ x: pos.x, y: pos.y, hp: 5 });
       }
     }
+
+    function initGame() {
+      player = {
+        x: 0, y: 0,
+        hp: 10, maxHp: 10,
+        atk: 3, lvl: 1
+      };
+      gameLevel = 1;
+      playerImage = gameAssets.player;
+      spawnEnemies();
+      draw();
+    }
+
+    function updateCounters() {
+      deathCounterText.textContent = `Deaths: ${deaths}`;
+      levelCounter.textContent = `Level: ${player.lvl} | Max: ${maxPlayerLevel}`;
+    }
+
+    function updateSessionTimer() {
+      const now = Date.now();
+      const seconds = Math.floor((now - startTime) / 1000);
+      const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const secs = String(seconds % 60).padStart(2, '0');
+      sessionTimer.textContent = `Session Time: ${mins}:${secs}`;
+    }
+
+    function showLevelTextMsg(text) {
+      levelText.innerText = text;
+      levelText.style.display = "block";
+      setTimeout(() => levelText.style.display = "none", 2000);
+    }
+
+    function resetGame() {
+      deaths++;
+      if (player.lvl > maxPlayerLevel) maxPlayerLevel = player.lvl;
+      initGame();
+      updateCounters();
+      showLevelTextMsg("Game Over!");
+    }
+
+    function attackEnemyAt(x, y) {
+      const enemy = enemies.find(e => e.x === x && e.y === y);
+      if (enemy) {
+        playerImage = gameAssets.playerAttack;
+        enemy.hp -= player.atk;
+        setTimeout(() => playerImage = gameAssets.player, 300);
+
+        if (enemy.hp <= 0) {
+          enemies = enemies.filter(e => e !== enemy);
+          player.lvl++;
+          spawnEnemies();
+          showLevelTextMsg("Enemy Defeated!");
+        }
+        draw();
+      }
+    }
+
+    document.addEventListener("keydown", (e) => {
+      const key = e.key.toLowerCase();
+      let dx = 0, dy = 0;
+
+      if (key === "arrowleft" || key === "a") dx = -1;
+      else if (key === "arrowright" || key === "d") dx = 1;
+      else if (key === "arrowup" || key === "w") dy = -1;
+      else if (key === "arrowdown" || key === "s") dy = 1;
+
+      const newX = player.x + dx;
+      const newY = player.y + dy;
+
+      if (newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize) {
+        const enemy = enemies.find(e => e.x === newX && e.y === newY);
+        if (enemy) {
+          attackEnemyAt(newX, newY);
+        } else {
+          player.x = newX;
+          player.y = newY;
+        }
+        draw();
+      }
+    });
+
+    let startTime = Date.now();
+    setInterval(updateSessionTimer, 1000);
+
+    loadImages(() => {
+      initGame();
+      updateCounters();
+      requestAnimationFrame(function loop() {
+        draw();
+        requestAnimationFrame(loop);
+      });
+    });
+  </script>
+</body>
+</html>
