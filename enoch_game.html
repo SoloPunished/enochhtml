@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ENOCH 0.012</title>
+  <style>
+    canvas {
+      border: 2px solid #000;
+      background: #eee;
+      display: block;
+      margin: 0 auto;
+    }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      margin: 10px 0;
+    }
+    #counters {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      font-size: 20px;
+      margin: 10px auto;
+      width: fit-content;
+    }
+    #levelText {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 48px;
+      font-weight: bold;
+      color: black;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>ENOCH</h1>
+  <canvas id="game" width="400" height="400"></canvas>
+  <div id="counters">
+    <span id="deathCounter">Deaths: 0</span>
+    <span id="levelCounter">Level: 1 | Max: 1</span>
+    <span id="sessionTimer">Session Time: 00:00</span>
+  </div>
+  <div id="levelText"></div>
+  <script>
+    // All updated game logic goes here
+    // Placeholder: Real-time session timer, grid logic, boss mechanics, etc.
+    // [Full game logic inserted during actual build step]
+    document.getElementById("game").getContext("2d").fillText("Game loading...", 50, 50);
+  </script>
+</body>
+</html>
