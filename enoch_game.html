@@ -76,6 +76,17 @@
     let healingArrows = [];
     let showStatText = null;
 
+    // Persistent stats (across deaths)
+const persistentStats = {
+  health: 10,  // Starting persistent health
+  damage: 3    // Starting persistent damage
+};
+
+// Session stats (reset on death)
+let sessionStats = {
+  health: persistentStats.health,  // Initialize session health with persistent health
+  damage: persistentStats.damage   // Initialize session damage with persistent damage
+};
     const gameAssets = {};
 
     // Load images
@@ -122,6 +133,21 @@
       console.log("Game loop started!");
     }
 
+    // Check if level should trigger the upgrade menu
+function checkForUpgradeMenu() {
+  if (gameLevel % 2 !== 0) return; // Show only on even levels (e.g., 2, 4, 6, 8...)
+
+  // Show the upgrade menu only if not already displayed
+  if (upgradeMenu.style.display !== "block") {
+    showUpgradeMenu();
+  }
+}
+
+setInterval(() => {
+  checkForUpgradeMenu();
+}, 1000);
+
+
     // Start by showing the loading screen
     loadImages();
     loadingScreen();  // Starts the loading process
@@ -133,6 +159,32 @@
         levelText.style.display = "none";
       }, 2000);
     }
+    // Show the upgrade menu on certain levels
+      function showUpgradeMenu() {
+      upgradeMenu.style.display = "block";
+      }
+
+    // Hide the upgrade menu
+    function hideUpgradeMenu() {
+      upgradeMenu.style.display = "none";
+      }
+
+    // Handle player choosing health upgrade
+    healthUpgrade.addEventListener("click", () => {
+        persistentStats.health++;  // Upgrade persistent health
+        sessionStats.health = persistentStats.health;  // Sync session health with persistent health
+        hideUpgradeMenu();
+      });
+
+    // Handle player choosing damage upgrade
+    damageUpgrade.addEventListener("click", () => {
+      persistentStats.damage++;  // Upgrade persistent damage
+      sessionStats.damage = persistentStats.damage;  // Sync session damage with persistent damage
+      hideUpgradeMenu();
+      });
+
+    // Confirm the upgrade and continue the game
+    confirmUpgrade.addEventListener("click", hideUpgradeMenu);
 
     function updateCounters() {
       if (!player || player.lvl == null) return;
@@ -147,6 +199,19 @@
       const seconds = String(totalSeconds % 60).padStart(2, '0');
       sessionTimer.innerText = `Session Time: ${minutes}:${seconds}`;
     }
+
+    function updateCounters() {
+  deathCounterText.innerText = `Deaths: ${deaths}`;
+  levelCounter.innerText = `Level: ${gameLevel} | Max: ${maxPlayerLevel}`;
+}
+
+function updateSessionTimer() {
+  const now = Date.now();
+  const totalSeconds = Math.floor((now - sessionStartTime) / 1000);
+  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+  const seconds = String(totalSeconds % 60).padStart(2, '0');
+  sessionTimer.innerText = `Session Time: ${minutes}:${seconds}`;
+}
 
     setInterval(() => {
       updateSessionTimer();
@@ -192,6 +257,24 @@
     function initGame() {
       gridSize = 2;
       gameLevel = 1;
+
+  // Initialize player using sessionStats
+  player = {
+    x: 0,
+    y: 0,
+    maxHp: sessionStats.health, // Use the session health value
+    hp: sessionStats.health,    // Use the session health value
+    atk: sessionStats.damage,   // Use the session damage value
+    lvl: 1,
+    img: getGameAsset("player")
+  };
+
+  spawnEnemies();
+  spawnBosses();
+  updateCounters();
+  draw();
+}
+    
       firstMove = true;
       player = {
         x: 0,
@@ -209,29 +292,37 @@
     }
 
     function resetGame() {
-      if (player.lvl > maxPlayerLevel) maxPlayerLevel = player.lvl;
-      deaths++;
-      updateCounters();
-      gridSize = 2;
-      gameLevel = 1;
-      firstMove = true;
-      player = {
-        x: 0,
-        y: 0,
-        maxHp: 10,
-        hp: 10,
-        atk: 3,
-        lvl: 1
-      };
-      resetPlayerPosition();
-      spawnEnemies();
-      showLevelTextMsg("GAME OVER");
-      setTimeout(() => {
-        showLevelTextMsg("LEVEL 1");
-        updateCounters();
-        draw();
-      }, 2000);
-    }
+  if (player.lvl > maxPlayerLevel) maxPlayerLevel = player.lvl;
+  deaths++;
+  updateCounters();
+  gameLevel = 1;
+
+  // Reset session stats to match persistent stats (upgrades will persist)
+  sessionStats = {
+    health: persistentStats.health,  // Reset to persistent health
+    damage: persistentStats.damage   // Reset to persistent damage
+  };
+
+  // Reset the player state
+  player = {
+    x: 0,
+    y: 0,
+    maxHp: sessionStats.health,
+    hp: sessionStats.health,
+    atk: sessionStats.damage,
+    lvl: 1,
+    img: getGameAsset("playerDeath")
+  };
+
+  spawnEnemies();
+  spawnBosses();
+  showLevelTextMsg("GAME OVER");
+  setTimeout(() => {
+    showLevelTextMsg("LEVEL 1");
+    updateCounters();
+    draw();
+  }, 2000);
+}
 
     function showStatTextForDuration(text, duration = 1000) {
       showStatText = text;
