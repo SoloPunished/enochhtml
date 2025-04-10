@@ -57,7 +57,7 @@
     const ctx = canvas.getContext("2d");
 
     const tileSize = 100;
-    const gridSize = 2;
+    let gridSize = 2; // Now mutable
     canvas.width = tileSize * gridSize;
     canvas.height = tileSize * gridSize;
 
@@ -68,6 +68,7 @@
 
     let player = {};
     let enemies = [];
+    let powerUps = [];
     let deaths = 0;
     let maxPlayerLevel = 1;
     let gameLevel = 1;
@@ -111,11 +112,21 @@
         }
       }
 
+      // Draw power-ups
+      powerUps.forEach(p => {
+        ctx.fillStyle = "green";
+        ctx.beginPath();
+        ctx.arc(p.x * tileSize + tileSize / 2, p.y * tileSize + tileSize / 2, 10, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Draw enemies
       enemies.forEach(e => {
         ctx.drawImage(gameAssets.enemy, e.x * tileSize, e.y * tileSize, tileSize, tileSize);
         drawTextWithOutline(`${e.hp}`, e.x * tileSize + 10, e.y * tileSize + 20, "yellow");
       });
 
+      // Draw player
       ctx.drawImage(playerImage, player.x * tileSize, player.y * tileSize, tileSize, tileSize);
       drawTextWithOutline(`${player.hp}/${player.maxHp}`, player.x * tileSize + 10, player.y * tileSize + 20, "cyan");
     }
@@ -125,7 +136,11 @@
       do {
         x = Math.floor(Math.random() * gridSize);
         y = Math.floor(Math.random() * gridSize);
-      } while ((x === player.x && y === player.y) || enemies.some(e => e.x === x && e.y === y));
+      } while (
+        (x === player.x && y === player.y) ||
+        enemies.some(e => e.x === x && e.y === y) ||
+        powerUps.some(p => p.x === x && p.y === y)
+      );
       return { x, y };
     }
 
@@ -139,6 +154,10 @@
     }
 
     function initGame() {
+      gridSize = 2;
+      canvas.width = tileSize * gridSize;
+      canvas.height = tileSize * gridSize;
+
       player = {
         x: 0, y: 0,
         hp: 10, maxHp: 10,
@@ -146,6 +165,7 @@
       };
       gameLevel = 1;
       playerImage = gameAssets.player;
+      powerUps = [];
       spawnEnemies();
       draw();
     }
@@ -187,6 +207,17 @@
         if (enemy.hp <= 0) {
           enemies = enemies.filter(e => e !== enemy);
           player.lvl++;
+
+          // Drop a power-up (1/3 chance)
+          if (Math.random() < 1/3) {
+            powerUps.push({ x: enemy.x, y: enemy.y });
+          }
+
+          // Increase grid size
+          gridSize++;
+          canvas.width = tileSize * gridSize;
+          canvas.height = tileSize * gridSize;
+
           spawnEnemies();
           showLevelTextMsg("Enemy Defeated!");
         }
@@ -208,11 +239,19 @@
 
       if (newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize) {
         const enemy = enemies.find(e => e.x === newX && e.y === newY);
+        const powerUp = powerUps.find(p => p.x === newX && p.y === newY);
+
         if (enemy) {
           attackEnemyAt(newX, newY);
         } else {
           player.x = newX;
           player.y = newY;
+
+          // Pick up power-up
+          if (powerUp) {
+            player.hp = Math.min(player.hp + 10, player.maxHp);
+            powerUps = powerUps.filter(p => p !== powerUp);
+          }
         }
         draw();
       }
