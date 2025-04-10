@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ENOCH 0.012</title>
+  <title>ENOCH 0.011</title>
   <style>
     canvas {
       border: 2px solid #000;
@@ -53,10 +53,223 @@
   </div>
   <div id="levelText"></div>
   <script>
-    // All updated game logic goes here
-    // Placeholder: Real-time session timer, grid logic, boss mechanics, etc.
-    // [Full game logic inserted during actual build step]
-    document.getElementById("game").getContext("2d").fillText("Game loading...", 50, 50);
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const levelText = document.getElementById("levelText");
+    const deathCounterText = document.getElementById("deathCounter");
+    const levelCounter = document.getElementById("levelCounter");
+    const sessionTimer = document.getElementById("sessionTimer");
+
+    let deaths = 0;
+    let maxPlayerLevel = 1;
+    let gridSize = 2;
+    const tileSize = 100;
+    let gameLevel = 1;
+    let firstMove = true;
+    let sessionStartTime = Date.now();
+    let player = {};
+    let enemies = [];
+    let heals = [];
+    let powerUps = [];
+    let dropFlashes = [];
+    let healingArrows = [];
+    let showStatText = null;
+
+    function showLevelTextMsg(text) {
+      levelText.innerText = text;
+      levelText.style.display = "block";
+      setTimeout(() => {
+        levelText.style.display = "none";
+      }, 2000);
+    }
+
+    function updateCounters() {
+      if (!player || player.lvl == null) return;
+      deathCounterText.innerText = `Deaths: ${deaths}`;
+      levelCounter.innerText = `Level: ${player.lvl} | Max: ${maxPlayerLevel}`;
+    }
+
+    function updateSessionTimer() {
+      const now = Date.now();
+      const totalSeconds = Math.floor((now - sessionStartTime) / 1000);
+      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+      const seconds = String(totalSeconds % 60).padStart(2, '0');
+      sessionTimer.innerText = `Session Time: ${minutes}:${seconds}`;
+    }
+
+    setInterval(() => {
+      updateSessionTimer();
+      updateDropFlashes();
+      draw();
+    }, 1000);
+
+    function getRandomEmptyTile() {
+      let x, y;
+      do {
+        x = Math.floor(Math.random() * gridSize);
+        y = Math.floor(Math.random() * gridSize);
+      } while (
+        (x === player.x && y === player.y) ||
+        enemies.some(e => e.x === x && e.y === y) ||
+        heals.some(h => h.x === x && h.y === y) ||
+        powerUps.some(p => p.x === x && p.y === y)
+      );
+      return { x, y };
+    }
+
+    function spawnEnemies() {
+      enemies = [];
+      heals = [];
+      const enemyCount = Math.floor((gameLevel * 1.5) + 1);
+      for (let i = 0; i < enemyCount; i++) {
+        const pos = getRandomEmptyTile();
+        enemies.push({ 
+          x: pos.x, 
+          y: pos.y, 
+          hp: 3 * (2 ** (gameLevel - 1)), 
+          atk: 1 * (2 ** (gameLevel - 1))
+        });
+      }
+    }
+
+    function resetPlayerPosition() {
+      const center = (gridSize % 2 === 0) ? (gridSize / 2 - 1) : Math.floor(gridSize / 2);
+      player.x = center;
+      player.y = center;
+    }
+
+    function initGame() {
+      gridSize = 2;
+      gameLevel = 1;
+      firstMove = true;
+      player = {
+        x: 0,
+        y: 0,
+        maxHp: 10,
+        hp: 10,
+        atk: 3,
+        lvl: 1
+      };
+      maxPlayerLevel = 1;
+      resetPlayerPosition();
+      spawnEnemies();
+      updateCounters();
+      draw();
+    }
+
+    function resetGame() {
+      if (player.lvl > maxPlayerLevel) maxPlayerLevel = player.lvl;
+      deaths++;
+      updateCounters();
+      gridSize = 2;
+      gameLevel = 1;
+      firstMove = true;
+      player = {
+        x: 0,
+        y: 0,
+        maxHp: 10,
+        hp: 10,
+        atk: 3,
+        lvl: 1
+      };
+      resetPlayerPosition();
+      spawnEnemies();
+      showLevelTextMsg("GAME OVER");
+      setTimeout(() => {
+        showLevelTextMsg("LEVEL 1");
+        updateCounters();
+        draw();
+      }, 2000);
+    }
+
+    function showStatTextForDuration(text, duration = 1000) {
+      showStatText = text;
+      setTimeout(() => {
+        showStatText = null;
+      }, duration);
+    }
+
+    function updateDropFlashes() {
+      const now = Date.now();
+      dropFlashes = dropFlashes.filter(flash => now - flash.startTime < 1000);
+    }
+
+    function animateHealingArrows() {
+      healingArrows.push({ startTime: Date.now() });
+      if (healingArrows.length > 10) healingArrows.shift();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+        }
+      }
+      ctx.fillStyle = "green";
+      ctx.fillRect(player.x * tileSize + 20, player.y * tileSize + 20, tileSize - 40, tileSize - 40);
+      ctx.fillStyle = "blue";
+      ctx.font = "16px Arial";
+      ctx.fillText(`${player.hp}/${player.maxHp}`, player.x * tileSize + 25, player.y * tileSize + 35);
+      ctx.fillStyle = "red";
+      ctx.fillText(player.atk, player.x * tileSize + 25, player.y * tileSize + tileSize - 15);
+
+      enemies.forEach(e => {
+        ctx.fillStyle = "red";
+        ctx.fillRect(e.x * tileSize + 30, e.y * tileSize + 30, tileSize - 60, tileSize - 60);
+        ctx.fillStyle = "yellow";
+        ctx.fillText(e.hp, e.x * tileSize + 35, e.y * tileSize + 45);
+        ctx.fillStyle = "orange";
+        ctx.fillText(e.atk, e.x * tileSize + 35, e.y * tileSize + tileSize - 20);
+      });
+
+      powerUps.forEach(p => {
+        if (p.type === "purple") ctx.fillStyle = "purple";
+        else if (p.type === "pink") ctx.fillStyle = "pink";
+        else if (p.type === "green") ctx.fillStyle = "green";
+        ctx.beginPath();
+        ctx.arc(p.x * tileSize + tileSize/2, p.y * tileSize + tileSize/2, 10, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      const now = Date.now();
+      dropFlashes.forEach(flash => {
+        const elapsed = now - flash.startTime;
+        if (elapsed < 1000) {
+          const alpha = 1 - (elapsed / 1000);
+          const offsetY = (elapsed / 1000) * 20;
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = "black";
+          ctx.font = "bold 20px Arial";
+          ctx.fillText("!!!", flash.x * tileSize + tileSize/2 - 15, flash.y * tileSize + tileSize/2 - offsetY);
+          ctx.restore();
+        }
+      });
+
+      if (showStatText) {
+        ctx.fillStyle = "black";
+        ctx.font = "16px Arial";
+        ctx.fillText(showStatText, player.x * tileSize + 25, player.y * tileSize + tileSize - 35);
+      }
+
+      // Draw Healing Arrows Animation
+      healingArrows.forEach(arrow => {
+        const elapsed = (Date.now() - arrow.startTime) / 1000;
+        const numArrows = Math.min(Math.floor(elapsed * 10), 10);
+        for (let i = 0; i < numArrows; i++) {
+          ctx.save();
+          ctx.globalAlpha = 0.5;
+          ctx.fillStyle = "rgb(0, 255, 0)";
+          ctx.beginPath();
+          ctx.arc(player.x * tileSize + tileSize / 2, player.y * tileSize + tileSize / 2 - i * 10, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      });
+    }
+
+    initGame();
   </script>
 </body>
 </html>
