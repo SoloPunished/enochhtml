@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ENOCH 0.011</title>
   <style>
     canvas {
@@ -40,6 +40,19 @@
       padding: 20px;
       border-radius: 10px;
       display: none;
+      z-index: 10;
+    }
+    #upgradeMenu {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      z-index: 10;
     }
   </style>
 </head>
@@ -50,14 +63,14 @@
     <span id="deathCounter">Deaths: 0</span>
     <span id="levelCounter">Level: 1 | Max: 1</span>
     <span id="sessionTimer">Session Time: 00:00</span>
+  </div>
   <div id="levelText"></div>
-  <div id="upgradeMenu" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; text-align: center;">
-  <h2>Choose an Upgrade</h2>
-  <button id="healthUpgrade">Increase Health</button>
-  <button id="damageUpgrade">Increase Damage</button>
-  <button id="confirmUpgrade">Confirm</button>
-</div>
-
+  <div id="upgradeMenu">
+    <h2>Choose an Upgrade</h2>
+    <button id="healthUpgrade">Increase Health</button>
+    <button id="damageUpgrade">Increase Damage</button>
+    <button id="confirmUpgrade">Confirm</button>
+  </div>
 
   <script>
     const canvas = document.getElementById("game");
@@ -69,298 +82,39 @@
 
     let deaths = 0;
     let maxPlayerLevel = 1;
-    let gridSize = 2;
-    const tileSize = 100;
     let gameLevel = 1;
-    let firstMove = true;
+    let gridSize = 5;
+    const tileSize = 100;
     let sessionStartTime = Date.now();
+    let enemies = [], heals = [], powerUps = [], dropFlashes = [], healingArrows = [];
     let player = {};
-    let enemies = [];
-    let heals = [];
-    let powerUps = [];
-    let dropFlashes = [];
-    let healingArrows = [];
     let showStatText = null;
 
-    // Persistent stats (across deaths)
-const persistentStats = {
-  health: 10,  // Starting persistent health
-  damage: 3    // Starting persistent damage
-};
+    const persistentStats = { health: 10, damage: 3 };
+    let sessionStats = { health: 10, damage: 3 };
 
-// Session stats (reset on death)
-let sessionStats = {
-  health: persistentStats.health,  // Initialize session health with persistent health
-  damage: persistentStats.damage   // Initialize session damage with persistent damage
-};
     const gameAssets = {};
+    const imagePaths = {
+      attackPointUp: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/attack%20point%20up.png",
+      boss: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/boss.png",
+      enemy: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/enemy.png",
+      player: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player.png",
+      healthPointUp: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/health%20point%20up.png",
+      playerAttack: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player%20attack.png",
+      playerDeath: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player%20death.png"
+    };
 
-    // Load images
-    function loadImages() {
-      const imagePaths = {
-        attackPointUp: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/attack%20point%20up.png",
-        boss: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/boss.png",
-        enemy: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/enemy.png",
-        player: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player.png",
-        healthPointUp: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/health%20point%20up.png",
-        playerAttack: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player%20attack.png",
-        playerDeath: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player%20death.png"
-      };
-
+    function loadImages(callback) {
+      let loaded = 0;
+      const total = Object.keys(imagePaths).length;
       for (const [key, path] of Object.entries(imagePaths)) {
         const img = new Image();
+        img.onload = () => {
+          if (++loaded === total) callback();
+        };
         img.src = path;
         gameAssets[key] = img;
       }
-    }
-
-    function areImagesLoaded() {
-      return Object.values(gameAssets).every(img => img.complete);
-    }
-
-    function getGameAsset(key) {
-      return gameAssets[key];
-    }
-
-    function loadingScreen() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = "30px Arial";
-      ctx.fillText("Loading...", canvas.width / 2 - 70, canvas.height / 2); // Centered text
-
-      if (areImagesLoaded()) {
-        gameLoop(ctx, 100, 100); // Start game loop once images are loaded
-      } else {
-        requestAnimationFrame(loadingScreen); // Keep checking if images are loaded
-      }
-    }
-
-function gameLoop(ctx) {
-  // Main game loop logic
-  updateSessionTimer();
-  updateDropFlashes();
-  updateCounters();
-  draw();
-  requestAnimationFrame(() => gameLoop(ctx));  // Continue the loop
-}
-
-function checkForUpgradeMenu() {
-  if (gameLevel % 2 !== 0) return; // Show only on even levels (e.g., 2, 4, 6, 8...)
-
-  // Show the upgrade menu only if not already displayed
-  if (document.getElementById("upgradeMenu").style.display !== "block") {
-    showUpgradeMenu();
-  }
-}
-
-function showUpgradeMenu() {
-  document.getElementById("upgradeMenu").style.display = "block";
-}
-
-function hideUpgradeMenu() {
-  document.getElementById("upgradeMenu").style.display = "none";
-}
-
-// Handle player choosing health upgrade
-document.getElementById("healthUpgrade").addEventListener("click", () => {
-  persistentStats.health++;  // Upgrade persistent health
-  sessionStats.health = persistentStats.health;  // Sync session health with persistent health
-  hideUpgradeMenu();
-});
-
-// Handle player choosing damage upgrade
-document.getElementById("damageUpgrade").addEventListener("click", () => {
-  persistentStats.damage++;  // Upgrade persistent damage
-  sessionStats.damage = persistentStats.damage;  // Sync session damage with persistent damage
-  hideUpgradeMenu();
-});
-
-// Confirm the upgrade and continue the game
-document.getElementById("confirmUpgrade").addEventListener("click", hideUpgradeMenu);
-
-setInterval(() => {
-  checkForUpgradeMenu();
-}, 1000);
-
-
-
-    // Start by showing the loading screen
-    loadImages();
-    loadingScreen();  // Starts the loading process
-
-    function showLevelTextMsg(text) {
-      levelText.innerText = text;
-      levelText.style.display = "block";
-      setTimeout(() => {
-        levelText.style.display = "none";
-      }, 2000);
-    }
-    // Show the upgrade menu on certain levels
-      function showUpgradeMenu() {
-      upgradeMenu.style.display = "block";
-      }
-
-    // Hide the upgrade menu
-    function hideUpgradeMenu() {
-      upgradeMenu.style.display = "none";
-      }
-
-    // Handle player choosing health upgrade
-    healthUpgrade.addEventListener("click", () => {
-        persistentStats.health++;  // Upgrade persistent health
-        sessionStats.health = persistentStats.health;  // Sync session health with persistent health
-        hideUpgradeMenu();
-      });
-
-    // Handle player choosing damage upgrade
-    damageUpgrade.addEventListener("click", () => {
-      persistentStats.damage++;  // Upgrade persistent damage
-      sessionStats.damage = persistentStats.damage;  // Sync session damage with persistent damage
-      hideUpgradeMenu();
-      });
-
-    // Confirm the upgrade and continue the game
-    confirmUpgrade.addEventListener("click", hideUpgradeMenu);
-
- function updateCounters() {
-  deathCounterText.innerText = `Deaths: ${deaths}`;
-  levelCounter.innerText = `Level: ${gameLevel} | Max: ${maxPlayerLevel}`;
-}
-
-function updateSessionTimer() {
-  const now = Date.now();
-  const totalSeconds = Math.floor((now - sessionStartTime) / 1000);
-  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
-  const seconds = String(totalSeconds % 60).padStart(2, '0');
-  sessionTimer.innerText = `Session Time: ${minutes}:${seconds}`;
-}
-
-    setInterval(() => {
-      updateSessionTimer();
-      updateDropFlashes();
-      draw();
-    }, 1000);
-      
-    function getRandomEmptyTile() {
-      let x, y;
-      do {
-        x = Math.floor(Math.random() * gridSize);
-        y = Math.floor(Math.random() * gridSize);
-      } while (
-        (x === player.x && y === player.y) ||
-        enemies.some(e => e.x === x && e.y === y) ||
-        heals.some(h => h.x === x && h.y === y) ||
-        powerUps.some(p => p.x === x && p.y === y)
-      );
-      return { x, y };
-    }
-
-    function spawnEnemies() {
-      enemies = [];
-      heals = [];
-      const enemyCount = Math.floor((gameLevel * 1.5) + 1);
-      for (let i = 0; i < enemyCount; i++) {
-        const pos = getRandomEmptyTile();
-        enemies.push({ 
-          x: pos.x, 
-          y: pos.y, 
-          hp: 3 * (2 ** (gameLevel - 1)), 
-          atk: 1 * (2 ** (gameLevel - 1))
-        });
-      }
-    }
-
-    function resetPlayerPosition() {
-      const center = (gridSize % 2 === 0) ? (gridSize / 2 - 1) : Math.floor(gridSize / 2);
-      player.x = center;
-      player.y = center;
-    }
-
-    function initGame() {
-  gridSize = 5;  // Set to a larger grid size
-  gameLevel = 1;
-  maxPlayerLevel = 1;
-
-  // Initialize player using sessionStats
-  player = {
-    x: 2,  // Set a starting position for the player
-    y: 2,  // Set a starting position for the player
-    maxHp: sessionStats.health, // Use the session health value
-    hp: sessionStats.health,    // Use the session health value
-    atk: sessionStats.damage,   // Use the session damage value
-    lvl: 1,
-    img: getGameAsset("player")
-  };
-
-  spawnEnemies();
-  updateCounters();
-  draw();
-}
-
-    
-      firstMove = true;
-      player = {
-        x: 0,
-        y: 0,
-        maxHp: 10,
-        hp: 10,
-        atk: 3,
-        lvl: 1
-      };
-      maxPlayerLevel = 1;
-      resetPlayerPosition();
-      spawnEnemies();
-      updateCounters();
-      draw();
-    }
-
-    function resetGame() {
-  if (player.lvl > maxPlayerLevel) maxPlayerLevel = player.lvl;
-  deaths++;
-  updateCounters();
-  gameLevel = 1;
-
-  // Reset session stats to match persistent stats (upgrades will persist)
-  sessionStats = {
-    health: persistentStats.health,  // Reset to persistent health
-    damage: persistentStats.damage   // Reset to persistent damage
-  };
-
-  // Reset the player state
-  player = {
-    x: 0,
-    y: 0,
-    maxHp: sessionStats.health,
-    hp: sessionStats.health,
-    atk: sessionStats.damage,
-    lvl: 1,
-    img: getGameAsset("playerDeath")
-  };
-
-  spawnEnemies();
-  spawnBosses();
-  showLevelTextMsg("GAME OVER");
-  setTimeout(() => {
-    showLevelTextMsg("LEVEL 1");
-    updateCounters();
-    draw();
-  }, 2000);
-}
-
-    function showStatTextForDuration(text, duration = 1000) {
-      showStatText = text;
-      setTimeout(() => {
-        showStatText = null;
-      }, duration);
-    }
-
-    function updateDropFlashes() {
-      const now = Date.now();
-      dropFlashes = dropFlashes.filter(flash => now - flash.startTime < 1000);
-    }
-
-    function animateHealingArrows() {
-      healingArrows.push({ startTime: Date.now() });
-      if (healingArrows.length > 10) healingArrows.shift();
     }
 
     function draw() {
@@ -370,70 +124,153 @@ function updateSessionTimer() {
           ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
         }
       }
-      ctx.fillStyle = "green";
-      ctx.fillRect(player.x * tileSize + 20, player.y * tileSize + 20, tileSize - 40, tileSize - 40);
+
+      // Player
+      ctx.drawImage(gameAssets.player, player.x * tileSize, player.y * tileSize, tileSize, tileSize);
       ctx.fillStyle = "blue";
       ctx.font = "16px Arial";
-      ctx.fillText(`${player.hp}/${player.maxHp}`, player.x * tileSize + 25, player.y * tileSize + 35);
+      ctx.fillText(`${player.hp}/${player.maxHp}`, player.x * tileSize + 10, player.y * tileSize + 20);
       ctx.fillStyle = "red";
-      ctx.fillText(player.atk, player.x * tileSize + 25, player.y * tileSize + tileSize - 15);
+      ctx.fillText(player.atk, player.x * tileSize + 10, player.y * tileSize + tileSize - 10);
 
+      // Enemies
       enemies.forEach(e => {
-        ctx.fillStyle = "red";
-        ctx.fillRect(e.x * tileSize + 30, e.y * tileSize + 30, tileSize - 60, tileSize - 60);
+        ctx.drawImage(gameAssets.enemy, e.x * tileSize, e.y * tileSize, tileSize, tileSize);
         ctx.fillStyle = "yellow";
-        ctx.fillText(e.hp, e.x * tileSize + 35, e.y * tileSize + 45);
+        ctx.fillText(e.hp, e.x * tileSize + 10, e.y * tileSize + 20);
         ctx.fillStyle = "orange";
-        ctx.fillText(e.atk, e.x * tileSize + 35, e.y * tileSize + tileSize - 20);
-      });
-
-      powerUps.forEach(p => {
-        if (p.type === "purple") ctx.fillStyle = "purple";
-        else if (p.type === "pink") ctx.fillStyle = "pink";
-        else if (p.type === "green") ctx.fillStyle = "green";
-        ctx.beginPath();
-        ctx.arc(p.x * tileSize + tileSize/2, p.y * tileSize + tileSize/2, 10, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      const now = Date.now();
-      dropFlashes.forEach(flash => {
-        const elapsed = now - flash.startTime;
-        if (elapsed < 1000) {
-          const alpha = 1 - (elapsed / 1000);
-          const offsetY = (elapsed / 1000) * 20;
-          ctx.save();
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = "black";
-          ctx.font = "bold 20px Arial";
-          ctx.fillText("!!!", flash.x * tileSize + tileSize/2 - 15, flash.y * tileSize + tileSize/2 - offsetY);
-          ctx.restore();
-        }
-      });
-
-      if (showStatText) {
-        ctx.fillStyle = "black";
-        ctx.font = "16px Arial";
-        ctx.fillText(showStatText, player.x * tileSize + 25, player.y * tileSize + tileSize - 35);
-      }
-
-      // Draw Healing Arrows Animation
-      healingArrows.forEach(arrow => {
-        const elapsed = (Date.now() - arrow.startTime) / 1000;
-        const numArrows = Math.min(Math.floor(elapsed * 10), 10);
-        for (let i = 0; i < numArrows; i++) {
-          ctx.save();
-          ctx.globalAlpha = 0.5;
-          ctx.fillStyle = "rgb(0, 255, 0)";
-          ctx.beginPath();
-          ctx.arc(player.x * tileSize + tileSize / 2, player.y * tileSize + tileSize / 2 - i * 10, 5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
+        ctx.fillText(e.atk, e.x * tileSize + 10, e.y * tileSize + tileSize - 10);
       });
     }
 
-    initGame();
+    function getRandomEmptyTile() {
+      let x, y;
+      do {
+        x = Math.floor(Math.random() * gridSize);
+        y = Math.floor(Math.random() * gridSize);
+      } while (
+        (x === player.x && y === player.y) ||
+        enemies.some(e => e.x === x && e.y === y)
+      );
+      return { x, y };
+    }
+
+    function spawnEnemies() {
+      enemies = [];
+      const count = Math.floor((gameLevel * 1.5) + 1);
+      for (let i = 0; i < count; i++) {
+        const pos = getRandomEmptyTile();
+        enemies.push({
+          x: pos.x,
+          y: pos.y,
+          hp: 3 * (2 ** (gameLevel - 1)),
+          atk: 1 * (2 ** (gameLevel - 1))
+        });
+      }
+    }
+
+    function initGame() {
+      sessionStats = {
+        health: persistentStats.health,
+        damage: persistentStats.damage
+      };
+      player = {
+        x: 2, y: 2,
+        hp: sessionStats.health,
+        maxHp: sessionStats.health,
+        atk: sessionStats.damage,
+        lvl: 1
+      };
+      gameLevel = 1;
+      maxPlayerLevel = 1;
+      spawnEnemies();
+      updateCounters();
+      draw();
+    }
+
+    function resetGame() {
+      if (player.lvl > maxPlayerLevel) maxPlayerLevel = player.lvl;
+      deaths++;
+      sessionStats = {
+        health: persistentStats.health,
+        damage: persistentStats.damage
+      };
+      player = {
+        x: 2, y: 2,
+        hp: sessionStats.health,
+        maxHp: sessionStats.health,
+        atk: sessionStats.damage,
+        lvl: 1
+      };
+      gameLevel = 1;
+      spawnEnemies();
+      updateCounters();
+      showLevelTextMsg("GAME OVER");
+      setTimeout(() => {
+        showLevelTextMsg("LEVEL 1");
+        draw();
+      }, 2000);
+    }
+
+    function updateCounters() {
+      deathCounterText.textContent = `Deaths: ${deaths}`;
+      levelCounter.textContent = `Level: ${gameLevel} | Max: ${maxPlayerLevel}`;
+    }
+
+    function updateSessionTimer() {
+      const now = Date.now();
+      const totalSeconds = Math.floor((now - sessionStartTime) / 1000);
+      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+      const seconds = String(totalSeconds % 60).padStart(2, '0');
+      sessionTimer.innerText = `Session Time: ${minutes}:${seconds}`;
+    }
+
+    function showLevelTextMsg(text) {
+      levelText.innerText = text;
+      levelText.style.display = "block";
+      setTimeout(() => {
+        levelText.style.display = "none";
+      }, 2000);
+    }
+
+    function checkForUpgradeMenu() {
+      if (gameLevel % 2 === 0) {
+        document.getElementById("upgradeMenu").style.display = "block";
+      }
+    }
+
+    // Upgrade Event Listeners
+    document.getElementById("healthUpgrade").addEventListener("click", () => {
+      persistentStats.health++;
+      sessionStats.health = persistentStats.health;
+      player.hp = sessionStats.health;
+      player.maxHp = sessionStats.health;
+    });
+
+    document.getElementById("damageUpgrade").addEventListener("click", () => {
+      persistentStats.damage++;
+      sessionStats.damage = persistentStats.damage;
+      player.atk = sessionStats.damage;
+    });
+
+    document.getElementById("confirmUpgrade").addEventListener("click", () => {
+      document.getElementById("upgradeMenu").style.display = "none";
+    });
+
+    // Main game loop
+    function gameLoop() {
+      updateSessionTimer();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Load images and start
+    loadImages(() => {
+      initGame();
+      gameLoop();
+    });
+
+    setInterval(checkForUpgradeMenu, 1000);
   </script>
 </body>
 </html>
