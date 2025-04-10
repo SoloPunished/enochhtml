@@ -112,7 +112,7 @@
     // For orbs, assume we have images named purple_orb.png and pink_orb.png
     const purpleOrbImage = new Image(); purpleOrbImage.src = baseUrl + "purple_orb.png";
     const pinkOrbImage = new Image(); pinkOrbImage.src = baseUrl + "pink_orb.png";
-
+console.log
     // Set the level-up menu images
     document.getElementById("healthUp").src = healthPointUpImage.src;
     document.getElementById("attackUp").src = attackPointUpImage.src;
@@ -148,7 +148,7 @@
     let orbCollectDisplay = null; // temporary display text {text, timer} over player on pickup
     let floatingTexts = [];   // holds orb drop "!!!" floating texts
     let healingAnimations = []; // holds healing arrow animations
-
+console.log
     // Timers and intervals
     let enemyMoveInterval;
     let gameLoopInterval;
@@ -237,7 +237,7 @@
       player.x = center.x;
       player.y = center.y;
     }
-
+console.log
     // Initialize enemies based on current glvl (for normal enemies only)
     function spawnEnemies() {
       enemies = [];
@@ -256,7 +256,7 @@
         enemies.push({ x, y, health: baseHealth, attack: baseAttack });
       }
     }
-
+console.log
     // For bosses – if current glvl qualifies, spawn bosses.
     function spawnBosses() {
       bosses = [];
@@ -278,7 +278,7 @@
         }
       }
     }
-
+console.log
     // Create a boss object at top-left position (x, y) occupying a 2x2 square.
     function createBossAt(x, y) {
       // Boss stats: 4x current enemy stats.
