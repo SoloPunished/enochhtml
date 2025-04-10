@@ -125,35 +125,6 @@
         }
       }
       
-    document.addEventListener("keydown", (e) => {
-      let moved = false;
-      if (["ArrowUp", "w", "W"].includes(e.key)) {
-        if (player.y > 0) {
-          player.y--;
-          moved = true;
-        }
-      } else if (["ArrowDown", "s", "S"].includes(e.key)) {
-        if (player.y < gridSize - 1) {
-          player.y++;
-          moved = true;
-        }
-      } else if (["ArrowLeft", "a", "A"].includes(e.key)) {
-        if (player.x > 0) {
-          player.x--;
-          moved = true;
-        }
-      } else if (["ArrowRight", "d", "D"].includes(e.key)) {
-        if (player.x < gridSize - 1) {
-          player.x++;
-          moved = true;
-        }
-      }
-
-      if (moved) {
-        draw();
-        // You could insert combat or pickup logic here
-      }
-    });
       // Player
       ctx.drawImage(gameAssets.player, player.x * tileSize, player.y * tileSize, tileSize, tileSize);
       ctx.fillStyle = "blue";
@@ -300,6 +271,36 @@
     });
 
     setInterval(checkForUpgradeMenu, 1000);
+
+        document.addEventListener("keydown", (e) => {
+      let moved = false;
+      if (["ArrowUp", "w", "W"].includes(e.key)) {
+        if (player.y > 0) {
+          player.y--;
+          moved = true;
+        }
+      } else if (["ArrowDown", "s", "S"].includes(e.key)) {
+        if (player.y < gridSize - 1) {
+          player.y++;
+          moved = true;
+        }
+      } else if (["ArrowLeft", "a", "A"].includes(e.key)) {
+        if (player.x > 0) {
+          player.x--;
+          moved = true;
+        }
+      } else if (["ArrowRight", "d", "D"].includes(e.key)) {
+        if (player.x < gridSize - 1) {
+          player.x++;
+          moved = true;
+        }
+      }
+
+      if (moved) {
+        draw();
+        // You could insert combat or pickup logic here
+      }
+    });
   </script>
 </body>
 </html>
