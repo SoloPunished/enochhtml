@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ENOCH 0.011</title>
   <style>
+    function adjustCanvasSize() {
+  const maxGridSize = 24;  // Limit to a maximum of 24x24 grid (adjust as needed)
+  const maxCanvasSize = 1200;  // Max canvas size for large grids
+  const gridWidth = Math.min(gridSize, maxGridSize) * tileSize;
+  const gridHeight = Math.min(gridSize, maxGridSize) * tileSize;
+
+  canvas.width = gridWidth;
+  canvas.height = gridHeight;
+}
     canvas {
       border: 2px solid #000;
       background: #eee;
