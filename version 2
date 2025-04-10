@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ENOCH</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: monospace;
+      background: #111;
+      color: white;
+      text-align: center;
+      overflow: hidden;
+    }
+    h1 {
+      margin: 10px 0;
+    }
+    #hud {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      margin: 5px;
+      font-size: 16px;
+    }
+    #gameContainer {
+      position: relative;
+      display: inline-block;
+      background: #000;
+    }
+    canvas {
+      background: #000;
+      display: block;
+    }
+    #overlayText {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 48px;
+      color: white;
+      text-shadow: 2px 2px black;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #levelupMenu {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.9);
+      padding: 20px;
+      border: 2px solid white;
+      display: none;
+      flex-direction: row;
+      gap: 20px;
+      z-index: 20;
+    }
+    #levelupMenu img {
+      width: 64px;
+      height: 64px;
+      cursor: pointer;
+    }
+    /* A simple style for floating orb attention "!!!" text */
+    .floatingText {
+      position: absolute;
+      font-size: 24px;
+      color: white;
+      text-shadow: 1px 1px black;
+      pointer-events: none;
+    }
+    /* Simple arrow style for healing animation */
+    .healingArrow {
+      position: absolute;
+      font-size: 16px;
+      font-weight: bold;
+      color: rgba(0,255,0,0.5);
+      -webkit-text-stroke: 1px black;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>ENOCH</h1>
+  <div id="hud">
+    <div id="maxLevel">MAX LEVEL: 1</div>
+    <div id="charLevel">CHAR LEVEL: 1</div>
+    <div id="sessionTime">SESSION TIME: 00:00</div>
+    <div id="deathCount">DEATHS: 0</div>
+  </div>
+  <div id="gameContainer">
+    <canvas id="gameCanvas"></canvas>
+    <div id="overlayText"></div>
+    <div id="levelupMenu">
+      <img id="healthUp" title="Increase Max Health">
+      <img id="attackUp" title="Increase Attack">
+    </div>
+  </div>
+
+  <!-- Image loader placed at end of body -->
+  <script>
+    // Load images from GitHub (username and repo derived from the given URL)
+    const baseUrl = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/";
+    const attackPointUpImage = new Image(); attackPointUpImage.src = baseUrl + "attack%20point%20up.png";
+    const bossImage = new Image(); bossImage.src = baseUrl + "boss.png";
+    const enemyImage = new Image(); enemyImage.src = baseUrl + "enemy.png";
+    const healthPointUpImage = new Image(); healthPointUpImage.src = baseUrl + "health%20point%20up.png";
+    const playerAttackImage = new Image(); playerAttackImage.src = baseUrl + "player%20attack.png";
+    const playerDeathImage = new Image(); playerDeathImage.src = baseUrl + "player%20death.png";
+    const playerImage = new Image(); playerImage.src = baseUrl + "player.png";
+    // For orbs, assume we have images named purple_orb.png and pink_orb.png
+    const purpleOrbImage = new Image(); purpleOrbImage.src = baseUrl + "purple_orb.png";
+    const pinkOrbImage = new Image(); pinkOrbImage.src = baseUrl + "pink_orb.png";
+
+    // Set the level-up menu images
+    document.getElementById("healthUp").src = healthPointUpImage.src;
+    document.getElementById("attackUp").src = attackPointUpImage.src;
+  </script>
+  <script>
+    /* ===============================
+       GLOBAL GAME VARIABLES
+    =============================== */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // HUD elements
+    const hudMax = document.getElementById("maxLevel");
+    const hudChar = document.getElementById("charLevel");
+    const hudTime = document.getElementById("sessionTime");
+    const hudDeath = document.getElementById("deathCount");
+    const overlayText = document.getElementById("overlayText");
+    const levelupMenu = document.getElementById("levelupMenu");
+    const healthUpBtn = document.getElementById("healthUp");
+    const attackUpBtn = document.getElementById("attackUp");
+
+    // Game parameters
+    let gridSize = 2;         // starting grid 2x2, increases after level cleared
+    let glvl = 1;             // game level (increases when board completed)
+    let charlvl = 1;          // character level increases with orb pickups
+    let persistentHealth = 0; // persistent bonus from level-up menu (health)
+    let persistentAttack = 0; // persistent bonus from level-up menu (attack)
+    let deaths = 0;
+    let maxCharLevel = 1;
+    let sessionStart = Date.now();
+    let orbsOnBoard = [];     // array to hold active orbs: {x, y, type} where type is "purple" or "pink"
+    let orbDropChance = 0.66; // 66% chance for a drop
+    let orbCollectDisplay = null; // temporary display text {text, timer} over player on pickup
+    let floatingTexts = [];   // holds orb drop "!!!" floating texts
+    let healingAnimations = []; // holds healing arrow animations
+
+    // Timers and intervals
+    let enemyMoveInterval;
+    let gameLoopInterval;
+    
+    // Grid cell size (will recalc with canvas size and gridSize)
+    let cellSize = 100;
+
+    // Game state and flags
+    let gamePaused = false;
+    let showLevelTextTimer = 0;
+    let levelText = ""; // Overlay text for LEVEL transitions
+    let initialMoveMade = false;  // used to display first "LEVEL 1" text
+
+    // Player object
+    const player = {
+      x: 0,
+      y: 0,
+      currentHealth: 10,
+      maxHealth: 10,
+      attack: 3,
+      // separate stat modifiers from orb pickups (reset on death) versus persistent upgrades (level-up menu)
+      tempHealthBonus: 0,
+      tempAttackBonus: 0,
+      image: playerImage,       // currently displayed image
+      isAttacking: false,       // flag to show attacking animation
+      attackTimeout: null,
+      dead: false
+    };
+
+    // Enemy list (each enemy: {x,y, health, attack})
+    let enemies = [];
+    // Boss list (each boss: {x, y, health, attack, squares: [ {x, y, shading} ], shading configuration})
+    let bosses = [];
+
+    /* ===============================
+       UTILITY FUNCTIONS
+    =============================== */
+    // Rounds quarter of difference with rule: if fractional >=0.5 round up, else down.
+    function getHealAmount(missing) {
+      const quarter = missing / 4;
+      return (quarter - Math.floor(quarter)) >= 0.5 ? Math.ceil(quarter) : Math.floor(quarter);
+    }
+
+    // Reset canvas size based on grid and available window size
+    function adjustCanvas() {
+      // We want the entire grid to be visible. Set maximum canvas width/height based on window size.
+      const maxWidth = window.innerWidth - 20;
+      const maxHeight = window.innerHeight - 150; // leave room for HUD/title
+      // Determine cell size so grid fits in both dimensions:
+      cellSize = Math.min(Math.floor(maxWidth / gridSize), Math.floor(maxHeight / gridSize));
+      canvas.width = cellSize * gridSize;
+      canvas.height = cellSize * gridSize;
+    }
+
+    // Returns the center-most coordinate for a grid of given size
+    function getCenterPosition() {
+      if (gridSize % 2 === 1) {
+        // odd grid: perfect center
+        const center = Math.floor(gridSize / 2);
+        return { x: center, y: center };
+      } else {
+        // even grid: choose top-left of four centers
+        return { x: gridSize/2 - 1, y: gridSize/2 - 1 };
+      }
+    }
+
+    // Returns a formatted MM:SS string given a timespan in milliseconds
+    function formatTime(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const minutes = String(Math.floor(totalSec / 60)).padStart(2, '0');
+      const seconds = String(totalSec % 60).padStart(2, '0');
+      return minutes + ":" + seconds;
+    }
+
+    // Returns a random integer [min, max]
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    /* ===============================
+       INITIALIZATION FUNCTIONS
+    =============================== */
+    // Place player at center of grid
+    function placePlayer() {
+      const center = getCenterPosition();
+      player.x = center.x;
+      player.y = center.y;
+    }
+
+    // Initialize enemies based on current glvl (for normal enemies only)
+    function spawnEnemies() {
+      enemies = [];
+      // Enemy base stats for glvl1
+      let baseHealth = 3 * Math.pow(2, glvl - 1);
+      let baseAttack = 1 * Math.pow(2, glvl - 1);
+      // enemy count: first level 2, subsequent levels: floor((prev_count * 1.5)+1)
+      let count = (glvl === 1) ? 2 : Math.floor((enemies.length * 1.5) + 1);
+      // But to scale properly, for prototype simply use: 2 for level 1, then add one more every level.
+      count = 2 + glvl - 1;
+      // Generate enemies at random positions not occupied by the player
+      while (enemies.length < count) {
+        const x = randInt(0, gridSize - 1);
+        const y = randInt(0, gridSize - 1);
+        if ((x === player.x && y === player.y) || enemies.some(e => e.x === x && e.y === y)) continue;
+        enemies.push({ x, y, health: baseHealth, attack: baseAttack });
+      }
+    }
+
+    // For bosses – if current glvl qualifies, spawn bosses.
+    function spawnBosses() {
+      bosses = [];
+      // Conditions: glvl 20 first, then 2 bosses at glvl 40 & 60, then 4 at glvl 80 & 100.
+      let bossCount = 0;
+      if (glvl >= 20 && glvl < 40) bossCount = 1;
+      else if (glvl >= 40 && glvl < 80) bossCount = 2;
+      else if (glvl >= 80 && glvl <= 100) bossCount = 4;
+      // For each boss, choose a random position where a 2x2 block fits (i.e., x from 0 to gridSize-2)
+      while (bossCount > 0) {
+        const x = randInt(0, gridSize - 2);
+        const y = randInt(0, gridSize - 2);
+        // Check that none of the 4 squares is already taken by the player or an enemy
+        let conflict = false;
+        if (player.x >= x && player.x < x+2 && player.y >= y && player.y < y+2) conflict = true;
+        if (!conflict) {
+          bosses.push(createBossAt(x, y));
+          bossCount--;
+        }
+      }
+    }
+
+    // Create a boss object at top-left position (x, y) occupying a 2x2 square.
+    function createBossAt(x, y) {
+      // Boss stats: 4x current enemy stats.
+      let enemyBaseHealth = 3 * Math.pow(2, glvl - 1);
+      let enemyBaseAttack = 1 * Math.pow(2, glvl - 1);
+      return {
+        x, y,
+        health: enemyBaseHealth * 4,
+        attack: enemyBaseAttack * 4,
+        // squares: an array of the 4 squares this boss occupies; each gets an initial shading
+        squares: [
+          { x: x, y: y, shading: "normal" },
+          { x: x+1, y: y, shading: "normal" },
+          { x: x, y: y+1, shading: "normal" },
+          { x: x+1, y: y+1, shading: "normal" }
+        ],
+        // assign one dark and one light shaded square randomly
+        updateShading: function() {
+          // Reset all to normal
+          this.squares.forEach(sq => sq.shading = "normal");
+          // randomly choose one for dark and one for light (they must be different)
+          let indices = [0,1,2,3];
+          const darkIndex = indices.splice(randInt(0, indices.length - 1), 1)[0];
+          const lightIndex = indices[randInt(0, indices.length - 1)];
+          this.squares[darkIndex].shading = "dark";
+          this.squares[lightIndex].shading = "light";
+        }
+      };
+    }
+
+    // Create new orb drop if conditions met and register a floating text animation
+    function tryDropOrb(x, y) {
+      if (Math.random() < orbDropChance) {
+        // Choose orb type randomly between purple and pink (for simplicity: 50/50 split)
+        const type = Math.random() < 0.5 ? "purple" : "pink";
+        orbsOnBoard.push({ x, y, type });
+        // Create floating text "!!!" at this cell (with pixel coordinates based on cellSize)
+        floatingTexts.push({ x: x * cellSize + cellSize/2, y: y * cellSize + cellSize/2, text: "!!!", timer: 1000 });
+      }
+    }
+
+    // Show overlay text (like LEVEL X) for a duration (ms)
+    function showOverlay(text, duration) {
+      overlayText.innerText = text;
+      overlayText.style.display = "block";
+      setTimeout(() => {
+        overlayText.style.display = "none";
+      }, duration);
+    }
+
+    // Show temporary pickup text (ATK up! or HP up!) on top of player
+    function showPickupText(text) {
+      orbCollectDisplay = { text, timer: 1000 };
+    }
+
+    // Add healing arrow animation on top of player. Creates 10 staggered arrows over 3 seconds.
+    function startHealingAnimation() {
+      for (let i = 0; i < 10; i++) {
+        healingAnimations.push({
+          startTime: Date.now() + i * 300, // last one appears roughly 3 seconds after first
+          duration: 1000,
+          x: player.x * cellSize + cellSize/2,
+          y: player.y * cellSize + cellSize/2,
+          active: false
+        });
+      }
+    }
+
+    // Reset game state when game over or new level starts.
+    function resetForNewLevel() {
+      orbsOnBoard = [];
+      floatingTexts = [];
+      healingAnimations = [];
+      // Place player at center
+      placePlayer();
+      // Reset enemy list
+      spawnEnemies();
+      // Spawn bosses if applicable
+      spawnBosses();
+      adjustCanvas();
+    }
+
+    // Reset persistent temporary stats on death
+    function resetPlayerOnDeath() {
+      player.currentHealth = 10 + persistentHealth; // base restored plus persistent upgrade
+      player.maxHealth = 10 + persistentHealth;
+      player.attack = 3 + persistentAttack;
+      player.tempHealthBonus = 0;
+      player.tempAttackBonus = 0;
+      charlvl = 1;
+      player.dead = false;
+      player.image = playerImage;
+      resetForNewLevel();
+    }
+
+    // Persistent level-up menu show (every other game level starting with 1)
+    function showLevelUpMenu() {
+      levelupMenu.style.display = "flex";
+      gamePaused = true;
+    }
+
+    function hideLevelUpMenu() {
+      levelupMenu.style.display = "none";
+      gamePaused = false;
+    }
+
+    /* ===============================
+       INPUT & MOVEMENT HANDLING
+    =============================== */
+    window.addEventListener("keydown", (e) => {
+      if (gamePaused) return;
+      let dx = 0, dy = 0;
+      if (["ArrowUp", "w", "W"].includes(e.key)) dy = -1;
+      else if (["ArrowDown", "s", "S"].includes(e.key)) dy = 1;
+      else if (["ArrowLeft", "a", "A"].includes(e.key)) dx = -1;
+      else if (["ArrowRight", "d", "D"].includes(e.key)) dx = 1;
+      else return;
+
+      if (!initialMoveMade) {
+        // On first movement, display LEVEL 1 overlay for 2-3 seconds
+        showOverlay("LEVEL 1", 2500);
+        initialMoveMade = true;
+      }
+
+      // Determine intended new position
+      let newX = player.x + dx;
+      let newY = player.y + dy;
+      if (newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize) return; // out of bounds
+
+      // Check for enemy collision first
+      const enemyIndex = enemies.findIndex(en => en.x === newX && en.y === newY);
+      if (enemyIndex >= 0) {
+        // Combat with enemy
+        let enemy = enemies[enemyIndex];
+        // Change player sprite to attack image temporarily
+        player.image = playerAttackImage;
+        player.isAttacking = true;
+        if (player.attack + player.tempAttackBonus > 0) {
+          enemy.health -= (player.attack + player.tempAttackBonus);
+        }
+        // Player takes damage equal to enemy attack (if enemy still alive or even if enemy dies, per prompt)
+        player.currentHealth -= enemy.attack;
+        // After 200ms, revert sprite back if player is not dead
+        clearTimeout(player.attackTimeout);
+        player.attackTimeout = setTimeout(() => {
+          if (!player.dead) player.image = playerImage;
+          player.isAttacking = false;
+        }, 200);
+        // If enemy dies, remove enemy, drop orb and heal player
+        if (enemy.health <= 0) {
+          enemies.splice(enemyIndex, 1);
+          // Dropped orb (if any) occurs in this enemy square
+          tryDropOrb(newX, newY);
+          // Heal player: heal for 1/4 of (max-current) difference, round per rules
+          let missing = (player.maxHealth + player.tempHealthBonus) - player.currentHealth;
+          let heal = getHealAmount(missing);
+          player.currentHealth = Math.min(player.currentHealth + heal, player.maxHealth + player.tempHealthBonus);
+          startHealingAnimation();
+        }
+        // Move into the enemy square regardless after combat
+        player.x = newX; player.y = newY;
+      }
+      else {
+        // Check if there is an orb in that position
+        const orbIndex = orbsOnBoard.findIndex(o => o.x === newX && o.y === newY);
+        if (orbIndex >= 0) {
+          let orb = orbsOnBoard[orbIndex];
+          // Process orb pickup
+          if (orb.type === "purple") {
+            player.tempAttackBonus += 3;
+            showPickupText("ATK up!");
+          } else if (orb.type === "pink") {
+            player.tempHealthBonus += 5;
+            player.currentHealth += 5;
+            // Also increase maximum, but do not let current exceed maximum
+            player.maxHealth += 5;
+            showPickupText("HP up!");
+          }
+          charlvl++;  // each orb increases character level
+          if (charlvl > maxCharLevel) {
+            maxCharLevel = charlvl;
+          }
+          orbsOnBoard.splice(orbIndex, 1);
+          // Move player into cell
+          player.x = newX; player.y = newY;
+        }
+        else {
+          // Move player normally
+          player.x = newX; player.y = newY;
+        }
+      }
+
+      // Check for collision with boss(es) if any exist (iterate through bosses and their squares)
+      bosses.forEach(boss => {
+        boss.squares.forEach(sq => {
+          if (sq.x === newX && sq.y === newY) {
+            // Determine behavior based on shading
+            if (sq.shading === "dark") {
+              // No damage to boss; player takes damage
+              player.currentHealth -= boss.attack;
+            } else if (sq.shading === "light") {
+              // Boss takes double damage; no return damage
+              boss.health -= (player.attack + player.tempAttackBonus) * 2;
+            } else {
+              // Standard exchange
+              boss.health -= (player.attack + player.tempAttackBonus);
+              player.currentHealth -= boss.attack;
+            }
+            // After an attack, update boss shading randomly
+            boss.updateShading();
+          }
+        });
+      });
+
+      // After processing movement/combat, check if player is dead
+      if (player.currentHealth <= 0) {
+        // Set game over state
+        player.dead = true;
+        player.image = playerDeathImage;
+        showOverlay("GAME OVER", 2000);
+        deaths++;
+        // update HUD death and reset char level etc.
+        hudDeath.innerText = "DEATHS: " + deaths;
+        // After a brief pause, reset game
+        setTimeout(resetPlayerOnDeath, 2000);
+        return;
+      }
+
+      // Every input update HUD stats
+      updateHUD();
+
+      // Check if all orbs on board have been collected (and no enemy remains if that is the win condition)
+      if (orbsOnBoard.length === 0 && enemies.length === 0 && bosses.length === 0) {
+        // Level complete: show "LEVEL X" over entire play area and advance game level and grid size.
+        glvl++;
+        showOverlay("LEVEL " + glvl, 2500);
+        gridSize++;
+        // Reset persistent orb-based stats (but not level-up menu upgrades)
+        player.currentHealth = (player.maxHealth + player.tempHealthBonus); // optionally heal to full on level change?
+        resetForNewLevel();
+        // Every other game level (1,3,5,...) show level-up popup before any movement
+        if (glvl % 2 === 1) {
+          showLevelUpMenu();
+        }
+      }
+    });
+
+    // Listen for clicks on level-up menu images to apply persistent stat upgrades
+    healthUpBtn.addEventListener("click", () => {
+      persistentHealth++;
+      // Update player stats: persistent bonus adds to max and current when resetting on death only
+      hudChar.innerText = "CHAR LEVEL: " + charlvl;
+      hideLevelUpMenu();
+    });
+    attackUpBtn.addEventListener("click", () => {
+      persistentAttack++;
+      hudChar.innerText = "CHAR LEVEL: " + charlvl;
+      hideLevelUpMenu();
+    });
+
+    /* ===============================
+       ENEMY AI MOVEMENT
+    =============================== */
+    function enemyTurn() {
+      if (gamePaused) return;
+      // Choose one random enemy to move one square toward the player.
+      if (enemies.length === 0) return;
+      const enemy = enemies[randInt(0, enemies.length - 1)];
+      // Determine horizontal and vertical differences:
+      const dx = player.x - enemy.x;
+      const dy = player.y - enemy.y;
+      let moveX = 0, moveY = 0;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        moveX = dx > 0 ? 1 : -1;
+      } else if (dy !== 0) {
+        moveY = dy > 0 ? 1 : -1;
+      }
+      const targetX = enemy.x + moveX;
+      const targetY = enemy.y + moveY;
+      // If target is player's square without player input, player takes damage and enemy remains.
+      if (targetX === player.x && targetY === player.y) {
+        player.currentHealth -= enemy.attack;
+        if (player.currentHealth <= 0) {
+          player.dead = true;
+          player.image = playerDeathImage;
+          showOverlay("GAME OVER", 2000);
+          deaths++;
+          hudDeath.innerText = "DEATHS: " + deaths;
+          setTimeout(resetPlayerOnDeath, 2000);
+        }
+      } else if (targetX >= 0 && targetX < gridSize && targetY >= 0 && targetY < gridSize) {
+        // Otherwise, move enemy if target cell is free (not occupied by other enemy, boss, or player)
+        const cellOccupied = enemies.some(e => e.x === targetX && e.y === targetY) ||
+                             (player.x === targetX && player.y === targetY) ||
+                             bosses.some(boss => boss.squares.some(sq => sq.x === targetX && sq.y === targetY));
+        if (!cellOccupied) {
+          enemy.x = targetX;
+          enemy.y = targetY;
+        }
+      }
+      updateHUD();
+    }
+    enemyMoveInterval = setInterval(enemyTurn, 1000);
+
+    /* ===============================
+       GAME LOOP & RENDERING
+    =============================== */
+    function updateHUD() {
+      hudChar.innerText = "CHAR LEVEL: " + charlvl;
+      hudMax.innerText = "MAX LEVEL: " + maxCharLevel;
+      const elapsed = Date.now() - sessionStart;
+      hudTime.innerText = "SESSION TIME: " + formatTime(elapsed);
+    }
+
+    function drawGrid() {
+      ctx.strokeStyle = "#444";
+      for (let i = 0; i <= gridSize; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * cellSize, 0);
+        ctx.lineTo(i * cellSize, gridSize * cellSize);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, i * cellSize);
+        ctx.lineTo(gridSize * cellSize, i * cellSize);
+        ctx.stroke();
+      }
+    }
+
+    // Draw player block with overlays (health in blue at top, attack in red at bottom)
+    function drawPlayer() {
+      const xPix = player.x * cellSize;
+      const yPix = player.y * cellSize;
+      ctx.drawImage(player.image, xPix, yPix, cellSize, cellSize);
+      // Overlay stats
+      ctx.fillStyle = "blue";
+      ctx.font = Math.floor(cellSize / 5) + "px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(player.currentHealth + "/" + (player.maxHealth + player.tempHealthBonus), xPix + cellSize/2, yPix + cellSize/4);
+      ctx.fillStyle = "red";
+      ctx.fillText(player.attack + player.tempAttackBonus, xPix + cellSize/2, yPix + cellSize - 5);
+      // If a pickup text is active, show it over player
+      if (orbCollectDisplay) {
+        ctx.fillStyle = "white";
+        ctx.fillText(orbCollectDisplay.text, xPix + cellSize/2, yPix + cellSize/2);
+      }
+    }
+
+    // Draw enemies with their overlays (health in yellow, attack in orange)
+    function drawEnemies() {
+      enemies.forEach(enemy => {
+        const xPix = enemy.x * cellSize;
+        const yPix = enemy.y * cellSize;
+        ctx.drawImage(enemyImage, xPix, yPix, cellSize, cellSize);
+        ctx.fillStyle = "yellow";
+        ctx.font = Math.floor(cellSize / 5) + "px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(enemy.health, xPix + cellSize/2, yPix + cellSize/4);
+        ctx.fillStyle = "orange";
+        ctx.fillText(enemy.attack, xPix + cellSize/2, yPix + cellSize - 5);
+      });
+    }
+
+    // Draw boss(es)
+    function drawBosses() {
+      bosses.forEach(boss => {
+        // Draw boss image over each square it occupies
+        boss.squares.forEach(sq => {
+          const xPix = sq.x * cellSize;
+          const yPix = sq.y * cellSize;
+          ctx.drawImage(bossImage, xPix, yPix, cellSize, cellSize);
+          // Draw overlay color for boss squares: top two fuchsia, bottom two neon lime green.
+          if (sq.y === boss.y) ctx.fillStyle = "rgba(255,0,255,0.3)"; else ctx.fillStyle = "rgba(57,255,20,0.3)";
+          ctx.fillRect(xPix, yPix, cellSize, cellSize);
+          // Additional shading for special squares:
+          if (sq.shading === "dark") {
+            ctx.fillStyle = "rgba(0,0,0,0.5)";
+            ctx.fillRect(xPix, yPix, cellSize, cellSize);
+          }
+          else if (sq.shading === "light") {
+            ctx.fillStyle = "rgba(255,255,255,0.5)";
+            ctx.fillRect(xPix, yPix, cellSize, cellSize);
+          }
+        });
+        // Draw boss stats over the top-left square
+        ctx.fillStyle = "white";
+        ctx.font = Math.floor(cellSize / 6) + "px monospace";
+        const bx = boss.x * cellSize;
+        const by = boss.y * cellSize;
+        ctx.fillText(boss.health, bx + cellSize/2, by + cellSize/3);
+      });
+    }
+
+    // Draw orbs (power-ups) on the grid
+    function drawOrbs() {
+      orbsOnBoard.forEach(orb => {
+        const xPix = orb.x * cellSize;
+        const yPix = orb.y * cellSize;
+        const orbImg = orb.type === "purple" ? purpleOrbImage : pinkOrbImage;
+        ctx.drawImage(orbImg, xPix, yPix, cellSize, cellSize);
+      });
+    }
+
+    // Draw floating texts (like "!!!" for orb drop)
+    function drawFloatingTexts(deltaTime) {
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        let ft = floatingTexts[i];
+        ft.y -= (deltaTime / 5);
+        ctx.fillStyle = "white";
+        ctx.font = "20px monospace";
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ft.timer -= deltaTime;
+        if (ft.timer <= 0) floatingTexts.splice(i, 1);
+      }
+    }
+
+    // Draw healing arrow animations over player
+    function drawHealingAnimations(deltaTime) {
+      const now = Date.now();
+      for (let i = healingAnimations.length - 1; i >= 0; i--) {
+        let anim = healingAnimations[i];
+        if (now < anim.startTime) continue;
+        let progress = (now - anim.startTime) / anim.duration;
+        if (progress > 1) { healingAnimations.splice(i, 1); continue; }
+        const x = anim.x;
+        const y = anim.y - progress * cellSize; // float upward
+        ctx.fillStyle = "rgba(0,255,0,0.5)";
+        ctx.font = "16px monospace";
+        ctx.fillText("↑", x, y);
+      }
+    }
+
+    // Main game loop for rendering and updating animations
+    let lastTime = Date.now();
+    function gameLoop() {
+      const now = Date.now();
+      const deltaTime = now - lastTime;
+      lastTime = now;
+      if (!gamePaused) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        drawOrbs();
+        drawPlayer();
+        drawEnemies();
+        drawBosses();
+        drawFloatingTexts(deltaTime);
+        drawHealingAnimations(deltaTime);
+        // Handle temporary pickup text timer
+        if (orbCollectDisplay) {
+          orbCollectDisplay.timer -= deltaTime;
+          if (orbCollectDisplay.timer <= 0) orbCollectDisplay = null;
+        }
+      }
+      updateHUD();
+      requestAnimationFrame(gameLoop);
+    }
+
+    /* ===============================
+       INITIALIZATION & START
+    =============================== */
+    function initGame() {
+      adjustCanvas();
+      placePlayer();
+      spawnEnemies();
+      spawnBosses();
+      updateHUD();
+      gameLoop();
+      // Show persistent level-up menu if it's every other level (starting at level 1)
+      if (glvl % 2 === 1 && !initialMoveMade) {
+        showLevelUpMenu();
+      }
+    }
+    initGame();
+
+    // Re-adjust canvas on window resize
+    window.addEventListener("resize", adjustCanvas);
+  </script>
+</body>
+</html>
