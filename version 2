@@ -1,10 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ENOCH</title>
   <style>
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #000;
+    }
+    #gameStats {
+      text-align: center;
+      font-family: monospace;
+      font-size: 20px;
+      color: white;
+      margin-top: 10px;
+    }
+    .stat {
+      margin: 5px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <div id="gameStats">
+    <div class="stat">Level: <span id="playerLevel">1</span></div>
+    <div class="stat">Max Level: <span id="maxPlayerLevel">1</span></div>
+    <div class="stat">Deaths: <span id="deathCount">0</span></div>
+    <div class="stat">Session Time: <span id="sessionTimer">00:00</span></div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Set canvas to full window width, adjust grid size logic accordingly
+    canvas.width = window.innerWidth * 0.9;
+    canvas.height = window.innerHeight * 0.7;
+
+    const attackPointUp = new Image();
+    attackPointUp.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/attack%20point%20up.png";
+
+    const bossImg = new Image();
+    bossImg.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/boss.png";
+
+    const enemyImg = new Image();
+    enemyImg.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/enemy.png";
+
+    const healthPointUp = new Image();
+    healthPointUp.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/health%20point%20up.png";
+
+    const playerAttack = new Image();
+    playerAttack.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player%20attack.png";
+
+    const playerDeath = new Image();
+    playerDeath.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player%20death.png";
+
+    const player = new Image();
+    player.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player.png";
+
     * { box-sizing: border-box; }
     body {
       margin: 0;
