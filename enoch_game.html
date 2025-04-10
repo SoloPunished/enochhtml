@@ -271,5 +271,47 @@
 
     initGame();
   </script>
+  // Show loading message until images are loaded
+function loadingScreen(ctx) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "30px Arial";
+    ctx.fillText("Loading...", canvas.width / 2 - 70, canvas.height / 2); // Centered text
+
+    if (areImagesLoaded()) {
+        gameLoop(ctx, 100, 100); // Start game loop once images are loaded
+    } else {
+        requestAnimationFrame(() => loadingScreen(ctx)); // Keep checking if images are loaded
+    }
+}
+
+// Start by showing the loading screen
+loadingScreen(ctx);
+  const gameAssets = {};
+
+function loadImages() {
+    const imagePaths = {
+        attackPointUp: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/attack%20point%20up.png",
+        boss: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/boss.png",
+        enemy: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/enemy.png",
+        player: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player.png",
+        healthPointUp: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/health%20point%20up.png",
+        playerAttack: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player%20attack.png",
+        playerDeath: "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player%20death.png"
+    };
+
+    for (const [key, path] of Object.entries(imagePaths)) {
+        const img = new Image();
+        img.src = path;
+        gameAssets[key] = img;
+    }
+}
+
+function areImagesLoaded() {
+    return Object.values(gameAssets).every(img => img.complete);
+}
+
+function getGameAsset(key) {
+    return gameAssets[key];
+}
 </body>
 </html>
