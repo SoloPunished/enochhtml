@@ -400,9 +400,7 @@ function handleMove(dx, dy) {
         return;
       }
     } else if (enemy.shields[direction]) {
-      enemy.shields[direction] = false;
-      sfxNoDamage.currentTime = 0;
-      sfxNoDamage.play();
+      
       noDamage = true;
     }
       enemy.shields[direction] = false;
@@ -508,9 +506,10 @@ function startGame() {
   initGame();
 }
 
-try {
-  startGame();
-} catch (e) {
+window.onload = () => {
+  try {
+    startGame();
+  } catch (e) {
   logDebug("[ERROR] Failed to start game: " + e.message);
   console.error(e);
 }
