@@ -1,4 +1,4 @@
-// game.js (with art assets)
+// game.js (with art assets, stroked stat text, persistent upgrade menu placeholder)
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -30,6 +30,15 @@ let heals = [];
 let powerUps = [];
 let dropFlashes = [];
 let showStatText = null;
+let persistentStats = { hp: 0, atk: 0 };
+
+function drawStrokedText(text, x, y, fill, stroke = "black") {
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = stroke;
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = fill;
+  ctx.fillText(text, x, y);
+}
 
 function showLevelTextMsg(text) {
   levelText.innerText = text;
@@ -86,9 +95,9 @@ function initGame() {
   player = {
     x: 0,
     y: 0,
-    maxHp: 10,
-    hp: 10,
-    atk: 3,
+    maxHp: 10 + persistentStats.hp,
+    hp: 10 + persistentStats.hp,
+    atk: 3 + persistentStats.atk,
     lvl: 1
   };
   maxPlayerLevel = 1;
@@ -96,6 +105,7 @@ function initGame() {
   spawnEnemies();
   updateCounters();
   draw();
+  if (gameLevel % 2 === 1) showUpgradeMenu();
 }
 
 function resetGame() {
@@ -104,25 +114,9 @@ function resetGame() {
   }
   deaths++;
   updateCounters();
-  gridSize = 2;
-  gameLevel = 1;
-  firstMove = true;
-  player = {
-    x: 0,
-    y: 0,
-    maxHp: 10,
-    hp: 10,
-    atk: 3,
-    lvl: 1
-  };
-  resetPlayerPosition();
-  spawnEnemies();
+  initGame();
   showLevelTextMsg("GAME OVER");
-  setTimeout(() => {
-    showLevelTextMsg("LEVEL 1");
-    updateCounters();
-    draw();
-  }, 2000);
+  setTimeout(() => showLevelTextMsg("LEVEL 1"), 2000);
 }
 
 function showStatTextForDuration(text, duration = 1000) {
@@ -137,6 +131,32 @@ function updateDropFlashes() {
   dropFlashes = dropFlashes.filter(flash => now - flash.startTime < 1000);
 }
 
+function showUpgradeMenu() {
+  const menu = document.createElement("div");
+  menu.style.position = "absolute";
+  menu.style.top = "50%";
+  menu.style.left = "50%";
+  menu.style.transform = "translate(-50%, -50%)";
+  menu.style.background = "white";
+  menu.style.padding = "20px";
+  menu.style.border = "2px solid black";
+  menu.style.zIndex = 1000;
+  menu.innerHTML = `
+    <h3>Choose a permanent upgrade</h3>
+    <img src="https://raw.githubusercontent.com/SoloPunished/enochhtml/main/health%20point%20up.png" style="width:80px;cursor:pointer;margin:10px" id="hpUp"/>
+    <img src="https://raw.githubusercontent.com/SoloPunished/enochhtml/main/attack%20point%20up.png" style="width:80px;cursor:pointer;margin:10px" id="atkUp"/>
+  `;
+  document.body.appendChild(menu);
+  document.getElementById("hpUp").onclick = () => {
+    persistentStats.hp++;
+    document.body.removeChild(menu);
+  };
+  document.getElementById("atkUp").onclick = () => {
+    persistentStats.atk++;
+    document.body.removeChild(menu);
+  };
+}
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   for (let y = 0; y < gridSize; y++) {
@@ -144,24 +164,19 @@ function draw() {
       ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
     }
   }
-
   if (playerImage.complete) {
     ctx.drawImage(playerImage, player.x * tileSize, player.y * tileSize, tileSize, tileSize);
   }
-  ctx.fillStyle = "blue";
   ctx.font = "16px Arial";
-  ctx.fillText(`${player.hp}/${player.maxHp}`, player.x * tileSize + 5, player.y * tileSize + 20);
-  ctx.fillStyle = "red";
-  ctx.fillText(player.atk, player.x * tileSize + 5, player.y * tileSize + tileSize - 5);
+  drawStrokedText(`${player.hp}/${player.maxHp}`, player.x * tileSize + 5, player.y * tileSize + 20, "blue");
+  drawStrokedText(player.atk, player.x * tileSize + 5, player.y * tileSize + tileSize - 5, "red");
 
   enemies.forEach(e => {
     if (enemyImage.complete) {
       ctx.drawImage(enemyImage, e.x * tileSize, e.y * tileSize, tileSize, tileSize);
     }
-    ctx.fillStyle = "yellow";
-    ctx.fillText(e.hp, e.x * tileSize + 5, e.y * tileSize + 20);
-    ctx.fillStyle = "orange";
-    ctx.fillText(e.atk, e.x * tileSize + 5, e.y * tileSize + tileSize - 5);
+    drawStrokedText(e.hp, e.x * tileSize + 5, e.y * tileSize + 20, "yellow");
+    drawStrokedText(e.atk, e.x * tileSize + 5, e.y * tileSize + tileSize - 5, "orange");
   });
 
   powerUps.forEach(p => {
@@ -187,9 +202,7 @@ function draw() {
   });
 
   if (showStatText) {
-    ctx.fillStyle = "black";
-    ctx.font = "16px Arial";
-    ctx.fillText(showStatText, player.x * tileSize + 25, player.y * tileSize + tileSize - 35);
+    drawStrokedText(showStatText, player.x * tileSize + 25, player.y * tileSize + tileSize - 35, "black");
   }
 }
 
@@ -225,6 +238,7 @@ function handleMove(dx, dy) {
         resetPlayerPosition();
         spawnEnemies();
         showLevelTextMsg(`LEVEL ${gameLevel}`);
+        if (gameLevel % 2 === 1) showUpgradeMenu();
       }
     }
   } else {
