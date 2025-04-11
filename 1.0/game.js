@@ -16,10 +16,7 @@ const sfxNoDamage = new Audio("https://raw.githubusercontent.com/SoloPunished/en
 const sfxDeath = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/creature%20death.mp3");
 
 let attackToggle = false;
-const bgMusic = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/perkristian-map18.mp3");
-bgMusic.loop = true;
-bgMusic.volume = 0.25;
-window.addEventListener("load", () => bgMusic.play());
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const levelText = document.getElementById("levelText");
@@ -43,13 +40,15 @@ pinkOrbImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/mai
 
 // === Game State Variables ===
 let cameraOffset = { x: 0, y: 0 };
-const viewTiles = Math.floor(canvas.width / tileSize);
+// Remove viewTiles as it uses tileSize before declaration
+let viewTiles;
 const bossImage = new Image();
 bossImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/boss.png";
 let deaths = 0;
 let maxPlayerLevel = 1;
 let gridSize = 2;
 const tileSize = 100;
+viewTiles = Math.floor(canvas.width / tileSize);
 let gameLevel = 1;
 let firstMove = true;
 let player = {};
