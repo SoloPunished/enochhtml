@@ -259,11 +259,13 @@ function showUpgradeMenu() {
 // === Drawing Logic ===
 function draw() {
   try {
-  logDebug(`Draw triggered | Player at (${player.x}, ${player.y}) | Grid ${gridSize}x${gridSize}`);
-  cameraOffset.x = Math.max(0, Math.min(player.x - Math.floor(viewTiles / 2), gridSize - viewTiles));
-  cameraOffset.y = Math.max(0, Math.min(player.y - Math.floor(viewTiles / 2), gridSize - viewTiles));
-  drawBloodSplatters();
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+    logDebug(`Draw triggered | Player at (${player.x}, ${player.y}) | Grid ${gridSize}x${gridSize}`);
+    ...
+  } catch (e) {
+    logDebug("[ERROR] draw() failed: " + e.message);
+    console.error(e);
+  }
+}
 
   // Grid
   for (let y = 0; y < gridSize; y++) {
