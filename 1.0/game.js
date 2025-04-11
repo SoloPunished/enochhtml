@@ -6,7 +6,9 @@
 const bgMusic = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/perkristian-map18.mp3");
 bgMusic.loop = true;
 bgMusic.volume = 0.25;
-window.addEventListener("load", () => bgMusic.play());
+window.addEventListener("keydown", () => {
+  if (bgMusic.paused) bgMusic.play();
+}, { once: true });
 
 const sfxAttack = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/player%20attack.mp3");
 const sfxAttack2 = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/player%20attack%202.mp3");
@@ -40,6 +42,8 @@ const pinkOrbImage = new Image();
 pinkOrbImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/health%20point%20up.png";
 
 // === Game State Variables ===
+let cameraOffset = { x: 0, y: 0 };
+const viewTiles = Math.floor(canvas.width / tileSize);
 const bossImage = new Image();
 bossImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/boss.png";
 let deaths = 0;
@@ -231,22 +235,23 @@ function showUpgradeMenu() {
 
 // === Drawing Logic ===
 function draw() {
-  drawBloodSplatters();
+  cameraOffset.x = Math.max(0, Math.min(player.x - Math.floor(viewTiles / 2), gridSize - viewTiles));
+  cameraOffset.y = Math.max(0, Math.min(player.y - Math.floor(viewTiles / 2), gridSize - viewTiles));
   drawBloodSplatters();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Grid
   for (let y = 0; y < gridSize; y++) {
     for (let x = 0; x < gridSize; x++) {
-      ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+      ctx.strokeRect((x - cameraOffset.x) * tileSize, (y - cameraOffset.y) * tileSize, tileSize, tileSize);
     }
   }
 
   // Player
-  if (playerSprite.complete) ctx.drawImage(playerSprite, player.x * tileSize, player.y * tileSize, tileSize, tileSize);
+  if (playerSprite.complete) ctx.drawImage(playerSprite, (player.x - cameraOffset.x) * tileSize, (player.y - cameraOffset.y) * tileSize, tileSize, tileSize);
   ctx.font = "16px Arial";
-  drawStrokedText(`${player.hp}/${player.maxHp}`, player.x * tileSize + 5, player.y * tileSize + 20, "blue");
-  drawStrokedText(player.atk, player.x * tileSize + 5, player.y * tileSize + tileSize - 5, "red");
+  drawStrokedText(`${player.hp}/${player.maxHp}`, (player.x - cameraOffset.x) * tileSize + 5, (player.y - cameraOffset.y) * tileSize + 20, "blue");
+  drawStrokedText(player.atk, (player.x - cameraOffset.x) * tileSize + 5, (player.y - cameraOffset.y) * tileSize + tileSize - 5, "red");
 
   // Enemies
   enemies.forEach(e => {
@@ -369,9 +374,7 @@ function handleMove(dx, dy) {
         return;
       }
     } else if (enemy.shields[direction]) {
-      enemy.shields[direction] = false;
-      sfxNoDamage.currentTime = 0;
-      sfxNoDamage.play();
+      
       noDamage = true;
     }
       enemy.shields[direction] = false;
