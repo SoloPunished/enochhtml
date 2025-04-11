@@ -400,7 +400,9 @@ function handleMove(dx, dy) {
         return;
       }
     } else if (enemy.shields[direction]) {
-      
+      enemy.shields[direction] = false;
+      sfxNoDamage.currentTime = 0;
+      sfxNoDamage.play();
       noDamage = true;
     }
       enemy.shields[direction] = false;
