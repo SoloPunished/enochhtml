@@ -3,6 +3,28 @@
 // ============================
 
 // === Setup & Image Loading ===
+
+// Debug Console
+const debugConsole = document.createElement("div");
+debugConsole.style.position = "absolute";
+debugConsole.style.top = "0";
+debugConsole.style.right = "0";
+debugConsole.style.width = "360px";
+debugConsole.style.height = "100vh";
+debugConsole.style.overflowY = "auto";
+debugConsole.style.background = "rgba(0,0,0,0.85)";
+debugConsole.style.color = "lime";
+debugConsole.style.fontSize = "12px";
+debugConsole.style.fontFamily = "monospace";
+debugConsole.style.padding = "10px";
+debugConsole.style.zIndex = 9999;
+document.body.appendChild(debugConsole);
+function logDebug(msg) {
+  const entry = document.createElement("div");
+  entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  debugConsole.appendChild(entry);
+  debugConsole.scrollTop = debugConsole.scrollHeight;
+}
 const bgMusic = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/perkristian-map18.mp3");
 bgMusic.loop = true;
 bgMusic.volume = 0.25;
@@ -130,6 +152,7 @@ function showStatTextForDuration(text, duration = 1000) {
 
 // === Game Initialization ===
 function spawnEnemies() {
+  logDebug(`Spawning enemies for level ${gameLevel}`);
   enemies = [];
   heals = [];
   const isBossLevel = [20, 40, 60, 80, 100].includes(gameLevel);
@@ -172,6 +195,7 @@ function resetPlayerPosition() {
 }
 
 function initGame() {
+  logDebug("Initializing game state");
   gridSize = 2;
   gameLevel = 1;
   firstMove = true;
@@ -187,8 +211,8 @@ function initGame() {
   playerSprite = playerImage;
   resetPlayerPosition();
   spawnEnemies();
-  updateCounters();
-  draw();
+  try { updateCounters(); } catch (e) { logDebug("[ERROR] updateCounters failed: " + e.message); console.error(e); }
+  try { draw(); } catch (e) { logDebug("[ERROR] Draw failed: " + e.message); console.error(e); }
   if (gameLevel % 2 === 1) showUpgradeMenu();
 }
 
@@ -234,6 +258,8 @@ function showUpgradeMenu() {
 
 // === Drawing Logic ===
 function draw() {
+  try {
+  logDebug(`Draw triggered | Player at (${player.x}, ${player.y}) | Grid ${gridSize}x${gridSize}`);
   cameraOffset.x = Math.max(0, Math.min(player.x - Math.floor(viewTiles / 2), gridSize - viewTiles));
   cameraOffset.y = Math.max(0, Math.min(player.y - Math.floor(viewTiles / 2), gridSize - viewTiles));
   drawBloodSplatters();
@@ -321,6 +347,7 @@ function draw() {
 
 // === Input & Combat Logic ===
 function handleMove(dx, dy) {
+  logDebug(`Player input: dx=${dx}, dy=${dy}`);
   if (firstMove) {
     showLevelTextMsg("LEVEL 1");
     firstMove = false;
@@ -335,7 +362,7 @@ function handleMove(dx, dy) {
     return e.x === newX && e.y === newY;
   });
   if (enemy) {
-    playerSprite = playerAttackImage;
+    try { playerSprite = playerAttackImage; } catch (e) { logDebug("[ERROR] Sprite change failed: " + e.message); }
     setTimeout(() => { playerSprite = playerImage; draw(); }, 150);
 
     // Alternate attack sounds
@@ -475,7 +502,13 @@ document.addEventListener("keydown", (e) => {
 
 // === Game Start ===
 function startGame() {
+  logDebug("Starting game");
   initGame();
 }
 
-startGame();
+try {
+  startGame();
+} catch (e) {
+  logDebug("[ERROR] Failed to start game: " + e.message);
+  console.error(e);
+}
