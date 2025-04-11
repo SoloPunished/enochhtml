@@ -271,8 +271,15 @@ function handleMove(dx, dy) {
       player.hp = Math.min(player.hp + healAmount, player.maxHp);
 
       if (enemies.length === 0) {
-        gameLevel++;
-        gridSize++;
+  showLevelTextMsg(`LEVEL ${gameLevel + 1}`);
+  setTimeout(() => {
+    gameLevel++;
+    gridSize++;
+    resetPlayerPosition();
+    spawnEnemies();
+    if (gameLevel % 2 === 1) showUpgradeMenu();
+    draw();
+  }, 2000);
         resetPlayerPosition();
         spawnEnemies();
         showLevelTextMsg(`LEVEL ${gameLevel}`);
