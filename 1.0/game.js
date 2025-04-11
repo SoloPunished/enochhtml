@@ -1,10 +1,22 @@
-// game.js (extracted from version 2.html)
+// game.js (with art assets)
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const levelText = document.getElementById("levelText");
 const deathCounterText = document.getElementById("deathCounter");
 const levelCounter = document.getElementById("levelCounter");
+
+const playerImage = new Image();
+playerImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player.png";
+
+const enemyImage = new Image();
+enemyImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/enemy.png";
+
+const purpleOrbImage = new Image();
+purpleOrbImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/attack%20point%20up.png";
+
+const pinkOrbImage = new Image();
+pinkOrbImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/health%20point%20up.png";
 
 let deaths = 0;
 let maxPlayerLevel = 1;
@@ -132,28 +144,31 @@ function draw() {
       ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
     }
   }
-  ctx.fillStyle = "green";
-  ctx.fillRect(player.x * tileSize + 20, player.y * tileSize + 20, tileSize - 40, tileSize - 40);
+
+  if (playerImage.complete) {
+    ctx.drawImage(playerImage, player.x * tileSize, player.y * tileSize, tileSize, tileSize);
+  }
   ctx.fillStyle = "blue";
   ctx.font = "16px Arial";
-  ctx.fillText(`${player.hp}/${player.maxHp}`, player.x * tileSize + 25, player.y * tileSize + 35);
+  ctx.fillText(`${player.hp}/${player.maxHp}`, player.x * tileSize + 5, player.y * tileSize + 20);
   ctx.fillStyle = "red";
-  ctx.fillText(player.atk, player.x * tileSize + 25, player.y * tileSize + tileSize - 15);
+  ctx.fillText(player.atk, player.x * tileSize + 5, player.y * tileSize + tileSize - 5);
 
   enemies.forEach(e => {
-    ctx.fillStyle = "red";
-    ctx.fillRect(e.x * tileSize + 30, e.y * tileSize + 30, tileSize - 60, tileSize - 60);
+    if (enemyImage.complete) {
+      ctx.drawImage(enemyImage, e.x * tileSize, e.y * tileSize, tileSize, tileSize);
+    }
     ctx.fillStyle = "yellow";
-    ctx.fillText(e.hp, e.x * tileSize + 35, e.y * tileSize + 45);
+    ctx.fillText(e.hp, e.x * tileSize + 5, e.y * tileSize + 20);
     ctx.fillStyle = "orange";
-    ctx.fillText(e.atk, e.x * tileSize + 35, e.y * tileSize + tileSize - 20);
+    ctx.fillText(e.atk, e.x * tileSize + 5, e.y * tileSize + tileSize - 5);
   });
 
   powerUps.forEach(p => {
-    ctx.fillStyle = p.type === "purple" ? "purple" : "pink";
-    ctx.beginPath();
-    ctx.arc(p.x * tileSize + tileSize/2, p.y * tileSize + tileSize/2, 10, 0, Math.PI * 2);
-    ctx.fill();
+    const orbImg = p.type === "purple" ? purpleOrbImage : pinkOrbImage;
+    if (orbImg.complete) {
+      ctx.drawImage(orbImg, p.x * tileSize + tileSize / 4, p.y * tileSize + tileSize / 4, tileSize / 2, tileSize / 2);
+    }
   });
 
   const now = Date.now();
@@ -166,7 +181,7 @@ function draw() {
       ctx.globalAlpha = alpha;
       ctx.fillStyle = "black";
       ctx.font = "bold 20px Arial";
-      ctx.fillText("!!!", flash.x * tileSize + tileSize/2 - 15, flash.y * tileSize + tileSize/2 - offsetY);
+      ctx.fillText("!!!", flash.x * tileSize + tileSize / 2 - 15, flash.y * tileSize + tileSize / 2 - offsetY);
       ctx.restore();
     }
   });
