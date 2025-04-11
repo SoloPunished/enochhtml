@@ -256,11 +256,17 @@ function showUpgradeMenu() {
   };
 }
 
-// === Drawing Logic ===
 function draw() {
   try {
     logDebug(`Draw triggered | Player at (${player.x}, ${player.y}) | Grid ${gridSize}x${gridSize}`);
-    ...
+    
+    // Place your drawing logic here
+    // Example: ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // drawGrid();
+    // drawPlayer();
+    // drawEnemies();
+    // etc.
+
   } catch (e) {
     logDebug("[ERROR] draw() failed: " + e.message);
     console.error(e);
