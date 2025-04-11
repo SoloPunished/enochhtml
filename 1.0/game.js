@@ -3,6 +3,21 @@
 // ============================
 
 // === Setup & Image Loading ===
+const bgMusic = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/perkristian-map18.mp3");
+bgMusic.loop = true;
+bgMusic.volume = 0.25;
+window.addEventListener("load", () => bgMusic.play());
+
+const sfxAttack = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/player%20attack.mp3");
+const sfxAttack2 = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/player%20attack%202.mp3");
+const sfxNoDamage = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/attack%20no%20damage.mp3");
+const sfxDeath = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/creature%20death.mp3");
+
+let attackToggle = false;
+const bgMusic = new Audio("https://raw.githubusercontent.com/SoloPunished/enochhtml/main/Sound/perkristian-map18.mp3");
+bgMusic.loop = true;
+bgMusic.volume = 0.25;
+window.addEventListener("load", () => bgMusic.play());
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const levelText = document.getElementById("levelText");
@@ -25,6 +40,8 @@ const pinkOrbImage = new Image();
 pinkOrbImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/health%20point%20up.png";
 
 // === Game State Variables ===
+const bossImage = new Image();
+bossImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/boss.png";
 let deaths = 0;
 let maxPlayerLevel = 1;
 let gridSize = 2;
@@ -36,11 +53,35 @@ let enemies = [];
 let heals = [];
 let powerUps = [];
 let dropFlashes = [];
+let bloodSplatters = [];
 let showStatText = null;
 let persistentStats = { hp: 0, atk: 0 };
 let playerSprite = playerImage;
 
 // === Utilities ===
+function updateBloodSplatters() {
+  const now = Date.now();
+  bloodSplatters = bloodSplatters.filter(b => now - b.startTime < b.duration);
+}
+
+function drawBloodSplatters() {
+  const now = Date.now();
+  bloodSplatters.forEach(b => {
+    const elapsed = now - b.startTime;
+    const progress = elapsed / b.duration;
+    const maxSize = tileSize;
+    const currentSize = maxSize * (1 - progress);
+    const centerX = b.x * tileSize + tileSize / 2;
+    const centerY = b.y * tileSize + tileSize / 2;
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = 'red';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, currentSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+}
 function drawStrokedText(text, x, y, fill, stroke = "black") {
   ctx.lineWidth = 2;
   ctx.strokeStyle = stroke;
@@ -87,6 +128,26 @@ function showStatTextForDuration(text, duration = 1000) {
 // === Game Initialization ===
 function spawnEnemies() {
   enemies = [];
+  heals = [];
+  const isBossLevel = [20, 40, 60, 80, 100].includes(gameLevel);
+
+  if (isBossLevel) {
+    const bossCount = gameLevel >= 80 ? 4 : gameLevel >= 40 ? 2 : 1;
+    for (let i = 0; i < bossCount; i++) {
+      const bossX = Math.floor(Math.random() * (gridSize - 1));
+      const bossY = Math.floor(Math.random() * (gridSize - 1));
+      enemies.push({
+        isBoss: true,
+        x: bossX,
+        y: bossY,
+        hp: 3 * (2 ** (gameLevel - 1)) * 4,
+        atk: 1 * (2 ** (gameLevel - 1)) * 4,
+        light: { x: 0, y: 0 },
+        dark: { x: 1, y: 1 }
+      });
+    }
+    return;
+  }
   heals = [];
   const enemyCount = Math.floor((gameLevel * 1.5) + 1);
   for (let i = 0; i < enemyCount; i++) {
@@ -170,6 +231,8 @@ function showUpgradeMenu() {
 
 // === Drawing Logic ===
 function draw() {
+  drawBloodSplatters();
+  drawBloodSplatters();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Grid
@@ -187,6 +250,29 @@ function draw() {
 
   // Enemies
   enemies.forEach(e => {
+    if (e.isBoss && bossImage.complete) {
+      const bx = e.x * tileSize;
+      const by = e.y * tileSize;
+      ctx.drawImage(bossImage, bx, by, tileSize * 2, tileSize * 2);
+
+      // Overlay colors
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = "fuchsia";
+      ctx.fillRect(bx, by, tileSize * 2, tileSize);
+      ctx.fillStyle = "lime";
+      ctx.fillRect(bx, by + tileSize, tileSize * 2, tileSize);
+      ctx.globalAlpha = 0.2;
+      ctx.fillStyle = "black";
+      ctx.fillRect(bx + e.dark.x * tileSize, by + e.dark.y * tileSize, tileSize, tileSize);
+      ctx.globalAlpha = 0.2;
+      ctx.fillStyle = "white";
+      ctx.fillRect(bx + e.light.x * tileSize, by + e.light.y * tileSize, tileSize, tileSize);
+      ctx.globalAlpha = 1.0;
+
+      drawStrokedText(e.hp, bx + 5, by + 20, "yellow");
+      drawStrokedText(e.atk, bx + 5, by + tileSize * 2 - 10, "orange");
+      return;
+    }
     if (enemyImage.complete) ctx.drawImage(enemyImage, e.x * tileSize, e.y * tileSize, tileSize, tileSize);
     drawStrokedText(e.hp, e.x * tileSize + 5, e.y * tileSize + 20, "yellow");
     drawStrokedText(e.atk, e.x * tileSize + 5, e.y * tileSize + tileSize - 5, "orange");
@@ -240,30 +326,89 @@ function handleMove(dx, dy) {
   const newY = player.y + dy;
   if (newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize) return;
 
-  const enemy = enemies.find(e => e.x === newX && e.y === newY);
+  const enemy = enemies.find(e => {
+    if (e.isBoss) return newX >= e.x && newX < e.x + 2 && newY >= e.y && newY < e.y + 2;
+    return e.x === newX && e.y === newY;
+  });
   if (enemy) {
     playerSprite = playerAttackImage;
     setTimeout(() => { playerSprite = playerImage; draw(); }, 150);
 
-    const direction = dx === 1 ? 'left' : dx === -1 ? 'right' : dy === 1 ? 'up' : 'down';
-    if (enemy.shields[direction]) {
+    // Alternate attack sounds
+    if (attackToggle) {
+      sfxAttack2.currentTime = 0;
+      sfxAttack2.play();
+    } else {
+      sfxAttack.currentTime = 0;
+      sfxAttack.play();
+    }
+    attackToggle = !attackToggle;
+
+    let direction = dx === 1 ? 'left' : dx === -1 ? 'right' : dy === 1 ? 'up' : 'down';
+    let noDamage = false;
+
+    if (enemy.isBoss) {
+      const relX = newX - enemy.x;
+      const relY = newY - enemy.y;
+      const isLight = (relX === enemy.light.x && relY === enemy.light.y);
+      const isDark = (relX === enemy.dark.x && relY === enemy.dark.y);
+
+      // Randomize light/dark after each attack
+      enemy.light = { x: Math.floor(Math.random() * 2), y: Math.floor(Math.random() * 2) };
+      do {
+        enemy.dark = { x: Math.floor(Math.random() * 2), y: Math.floor(Math.random() * 2) };
+      } while (enemy.dark.x === enemy.light.x && enemy.dark.y === enemy.light.y);
+
+      if (isDark) {
+        noDamage = true;
+        sfxNoDamage.currentTime = 0;
+        sfxNoDamage.play();
+      }
+      if (isLight) {
+        enemy.hp -= player.atk * 2;
+        return;
+      }
+    } else if (enemy.shields[direction]) {
       enemy.shields[direction] = false;
+      sfxNoDamage.currentTime = 0;
+      sfxNoDamage.play();
+      noDamage = true;
+    }
+      enemy.shields[direction] = false;
+      sfxNoDamage.currentTime = 0;
+      sfxNoDamage.play();
     } else {
       player.hp -= enemy.atk;
     }
 
+    if (!noDamage) player.hp -= enemy.atk;
     enemy.hp -= player.atk;
 
     if (player.hp <= 0) return resetGame();
 
     if (enemy.hp <= 0) {
+      sfxDeath.currentTime = 0;
+      sfxDeath.play();
+      bloodSplatters.push({ x: enemy.x, y: enemy.y, startTime: Date.now(), duration: 1000 });
       enemies = enemies.filter(e => e !== enemy);
-      enemy.shields = { up: false, down: false, left: false, right: false };
+      if (!enemy.isBoss) enemy.shields = { up: false, down: false, left: false, right: false };
 
-      if (Math.random() < 0.66) {
+      if (!enemy.isBoss && Math.random() < 0.66) {
         const orbType = Math.random() < 0.5 ? "purple" : "pink";
         powerUps.push({ x: enemy.x, y: enemy.y, type: orbType });
         dropFlashes.push({ x: enemy.x, y: enemy.y, startTime: Date.now() });
+      }
+      if (enemy.isBoss) {
+        for (let i = 0; i < 4; i++) {
+          const offsetX = i % 2;
+          const offsetY = Math.floor(i / 2);
+          if (Math.random() < 0.66) {
+            const orbType = Math.random() < 0.5 ? "purple" : "pink";
+            powerUps.push({ x: enemy.x + offsetX, y: enemy.y + offsetY, type: orbType });
+            dropFlashes.push({ x: enemy.x + offsetX, y: enemy.y + offsetY, startTime: Date.now() });
+          }
+        }
+      }
       }
 
       let diff = player.maxHp - player.hp;
@@ -307,6 +452,7 @@ function handleMove(dx, dy) {
   }
 
   updateDropFlashes();
+  updateBloodSplatters();
   updateCounters();
   draw();
 }
