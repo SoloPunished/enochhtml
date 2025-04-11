@@ -5,21 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ENOCH 0.009</title>
   <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      background: #f0f0f0;
+    }
+
+    #gameArea {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: start;
+      padding-top: 10px;
+    }
+
     canvas {
       border: 2px solid #000;
       background: #eee;
-      display: block;
-      margin: 1 auto;
     }
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      margin: 0;
-      padding: 0;
-    }
+
     h1 {
       margin: 10px 0;
     }
+
     #counters {
       display: flex;
       justify-content: center;
@@ -27,6 +40,7 @@
       font-size: 20px;
       margin: 5px 0 10px;
     }
+
     #levelText {
       position: absolute;
       top: 50%;
@@ -39,17 +53,33 @@
       padding: 20px;
       border-radius: 10px;
       display: none;
+      z-index: 1000;
+    }
+
+    #debugConsole {
+      width: 360px;
+      background: rgba(0, 0, 0, 0.85);
+      color: lime;
+      font-size: 12px;
+      font-family: monospace;
+      overflow-y: auto;
+      padding: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>ENOCH</h1>
-  <canvas id="game" width="400" height="400"></canvas>
-  <div id="counters">
-    <span id="deathCounter">Deaths: 0</span>
-    <span id="levelCounter">Level: 1 | Max: 1</span>
+  <div id="gameArea">
+    <h1>ENOCH</h1>
+    <canvas id="game" width="800" height="800"></canvas>
+    <div id="counters">
+      <span id="deathCounter">Deaths: 0</span>
+      <span id="levelCounter">Level: 1 | Max: 1</span>
+    </div>
+    <div id="levelText"></div>
   </div>
-  <div id="levelText"></div>
-<script src="game.js?v=2"></script>
+
+  <div id="debugConsole"></div>
+
+  <script src="game.js?v=2"></script>
 </body>
 </html>
