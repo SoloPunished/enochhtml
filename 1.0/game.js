@@ -70,9 +70,9 @@ function loadSaveFile() {
   fetch("../log.txt")
     .then(res => res.text())
     .then(text => {
-      const lines = text.split(/
-?
-/); // fixed newline parsing
+
+const lines = text.split(/\r?\n/); // fixed newline parsing
+
       lines.forEach(line => {
         const [key, val] = line.split(":");
         if (key && val !== undefined) {
