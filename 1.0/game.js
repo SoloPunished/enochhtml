@@ -3,6 +3,7 @@
 // ============================
 
 // === Setup & Element References ===
+document.body.style.backgroundColor = "black";
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const levelText = document.getElementById("levelText");
@@ -62,6 +63,44 @@ const bossImage = new Image();
 bossImage.src = "../boss.png";
 
 // === Game State Variables ===
+
+function loadSaveFile() {
+  fetch("../log.txt")
+    .then(res => res.text())
+    .then(text => {
+      const lines = text.split("
+");
+      lines.forEach(line => {
+        const [key, val] = line.split(":");
+        if (key && val !== undefined) {
+          switch (key.trim()) {
+            case "deaths": deaths = parseInt(val); break;
+            case "maxLevel": maxPlayerLevel = parseInt(val); break;
+            case "hpBonus": persistentStats.hp = parseInt(val); break;
+            case "atkBonus": persistentStats.atk = parseInt(val); break;
+          }
+        }
+      });
+      logDebug("Save file loaded.");
+    })
+    .catch(() => {
+      logDebug("No save file found. Creating default...");
+      saveGame();
+    });
+}
+
+function saveGame() {
+  const saveData = `deaths:${deaths}
+maxLevel:${maxPlayerLevel}
+hpBonus:${persistentStats.hp}
+atkBonus:${persistentStats.atk}`;
+  const blob = new Blob([saveData], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "log.txt";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 let cameraOffset = { x: 0, y: 0 };
 let viewTiles;
 const tileSize = 100;
@@ -82,7 +121,8 @@ let persistentStats = { hp: 0, atk: 0 };
 let playerSprite = playerImage;
 let attackToggle = false;
 
-// === Utilities ===
+// === Game Functions ===
+
 function updateBloodSplatters() {
   const now = Date.now();
   bloodSplatters = bloodSplatters.filter(b => now - b.startTime < b.duration);
@@ -107,129 +147,64 @@ function drawBloodSplatters() {
   });
 }
 
-function drawStrokedText(text, x, y, fill, stroke = "black") {
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = stroke;
-  ctx.strokeText(text, x, y);
-  ctx.fillStyle = fill;
-  ctx.fillText(text, x, y);
-}
-
-function showLevelTextMsg(text) {
-  levelText.innerText = text;
-  levelText.style.display = "block";
-  setTimeout(() => { levelText.style.display = "none"; }, 2000);
-}
-
-function updateCounters() {
-  deathCounterText.innerText = `Deaths: ${deaths}`;
-  levelCounter.innerText = `Level: ${player.lvl} | Max: ${maxPlayerLevel} | +HP:${persistentStats.hp} +ATK:${persistentStats.atk}`;
-}
-
-function getRandomEmptyTile() {
-  let x, y;
-  do {
-    x = Math.floor(Math.random() * gridSize);
-    y = Math.floor(Math.random() * gridSize);
-  } while (
-    (x === player.x && y === player.y) ||
-    enemies.some(e => e.x === x && e.y === y) ||
-    heals.some(h => h.x === x && h.y === y) ||
-    powerUps.some(p => p.x === x && p.y === y)
-  );
-  return { x, y };
-}
-
 function updateDropFlashes() {
   const now = Date.now();
   dropFlashes = dropFlashes.filter(flash => now - flash.startTime < 1000);
 }
 
-function showStatTextForDuration(text, duration = 1000) {
-  showStatText = text;
-  setTimeout(() => { showStatText = null; }, duration);
-}
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
 
-// === Game Initialization ===
-function spawnEnemies() {
-  logDebug(`Spawning enemies for level ${gameLevel}`);
-  enemies = [];
-  heals = [];
-  const isBossLevel = [20, 40, 60, 80, 100].includes(gameLevel);
+  updateBloodSplatters();
+  updateDropFlashes();
+  drawBloodSplatters();
 
-  if (isBossLevel) {
-    const bossCount = gameLevel >= 80 ? 4 : gameLevel >= 40 ? 2 : 1;
-    for (let i = 0; i < bossCount; i++) {
-      const bossX = Math.floor(Math.random() * (gridSize - 1));
-      const bossY = Math.floor(Math.random() * (gridSize - 1));
-      enemies.push({
-        isBoss: true,
-        x: bossX,
-        y: bossY,
-        hp: 3 * (2 ** (gameLevel - 1)) * 4,
-        atk: 1 * (2 ** (gameLevel - 1)) * 4,
-        light: { x: 0, y: 0 },
-        dark: { x: 1, y: 1 }
-      });
+  for (let y = 0; y < gridSize; y++) {
+    for (let x = 0; x < gridSize; x++) {
+      ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
     }
-    return;
   }
-  heals = [];
-  const enemyCount = Math.floor((gameLevel * 1.5) + 1);
-  for (let i = 0; i < enemyCount; i++) {
-    const pos = getRandomEmptyTile();
-    enemies.push({
-      x: pos.x,
-      y: pos.y,
-      hp: 3 * (2 ** (gameLevel - 1)),
-      atk: 1 * (2 ** (gameLevel - 1)),
-      shields: { up: true, down: true, left: true, right: true }
-    });
+
+  ctx.drawImage(playerSprite, player.x * tileSize, player.y * tileSize, tileSize, tileSize);
+  ctx.font = "16px Arial";
+  drawStrokedText(`${player.hp}/${player.maxHp}`, player.x * tileSize + 5, player.y * tileSize + 20, "blue");
+  drawStrokedText(player.atk, player.x * tileSize + 5, player.y * tileSize + tileSize - 5, "red");
+
+  enemies.forEach(e => {
+    ctx.drawImage(enemyImage, e.x * tileSize, e.y * tileSize, tileSize, tileSize);
+    drawStrokedText(e.hp, e.x * tileSize + 5, e.y * tileSize + 20, "yellow");
+    drawStrokedText(e.atk, e.x * tileSize + 5, e.y * tileSize + tileSize - 5, "orange");
+  });
+
+  powerUps.forEach(p => {
+    const orbImg = p.type === "purple" ? purpleOrbImage : pinkOrbImage;
+    if (orbImg.complete) ctx.drawImage(orbImg, p.x * tileSize + tileSize / 4, p.y * tileSize + tileSize / 4, tileSize / 2, tileSize / 2);
+  });
+
+  const now = Date.now();
+  dropFlashes.forEach(flash => {
+    const elapsed = now - flash.startTime;
+    if (elapsed < 1000) {
+      const alpha = 1 - (elapsed / 1000);
+      const offsetY = (elapsed / 1000) * 20;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = "black";
+      ctx.font = "bold 20px Arial";
+      ctx.fillText("!!!", flash.x * tileSize + tileSize / 2 - 15, flash.y * tileSize + tileSize / 2 - offsetY);
+      ctx.restore();
+    }
+  });
+
+  if (showStatText) {
+    drawStrokedText(showStatText, player.x * tileSize + 25, player.y * tileSize + tileSize - 35, "black");
   }
 }
 
-function resetPlayerPosition() {
-  const center = Math.floor(gridSize / 2);
-  player.x = center;
-  player.y = center;
-}
-
-function initGame() {
-  logDebug("Initializing game state");
-  gridSize = 2;
-  gameLevel = 1;
-  firstMove = true;
-  player = {
-    x: 0,
-    y: 0,
-    maxHp: 10 + persistentStats.hp,
-    hp: 10 + persistentStats.hp,
-    atk: 3 + persistentStats.atk,
-    lvl: 1
-  };
-  maxPlayerLevel = 1;
-  playerSprite = playerImage;
-  resetPlayerPosition();
-  spawnEnemies();
-  try { updateCounters(); } catch (e) { logDebug("[ERROR] updateCounters failed: " + e.message); console.error(e); }
-  try { draw(); } catch (e) { logDebug("[ERROR] Draw failed: " + e.message); console.error(e); }
-  if (gameLevel % 2 === 1) showUpgradeMenu();
-}
-
-function resetGame() {
-  if (player.lvl > maxPlayerLevel) maxPlayerLevel = player.lvl;
-  deaths++;
-  updateCounters();
-  playerSprite = playerDeathImage;
-  draw();
-  setTimeout(() => {
-    initGame();
-    showLevelTextMsg("GAME OVER");
-    setTimeout(() => showLevelTextMsg("LEVEL 1"), 2000);
-  }, 1000);
-}
-
-// === Upgrade Menu ===
 function showUpgradeMenu() {
   const menu = document.createElement("div");
   menu.style.position = "absolute";
@@ -254,108 +229,97 @@ function showUpgradeMenu() {
     persistentStats.atk++;
     document.body.removeChild(menu);
   };
+}
 
-// === Drawing Logic ===
-function draw() {
-  try {
-    logDebug(`Draw triggered | Player at (${player.x}, ${player.y}) | Grid ${gridSize}x${gridSize}`);
-    cameraOffset.x = Math.max(0, Math.min(player.x - Math.floor(viewTiles / 2), gridSize - viewTiles));
-    cameraOffset.y = Math.max(0, Math.min(player.y - Math.floor(viewTiles / 2), gridSize - viewTiles));
-    drawBloodSplatters();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Grid
-    for (let y = 0; y < gridSize; y++) {
-      for (let x = 0; x < gridSize; x++) {
-        ctx.strokeRect((x - cameraOffset.x) * tileSize, (y - cameraOffset.y) * tileSize, tileSize, tileSize);
-      }
+function updateCounters() {
+  deathCounterText.innerText = `Deaths: ${deaths}`;
+  levelCounter.innerText = `Level: ${player.lvl} | Max: ${maxPlayerLevel} | +HP:${persistentStats.hp} +ATK:${persistentStats.atk}`;
+}
+
+function resetPlayerPosition() {
+  const center = Math.floor(gridSize / 2);
+  player.x = center;
+  player.y = center;
+}
+
+function spawnEnemies() {
+  logDebug(`Spawning enemies for level ${gameLevel}`);
+  enemies = [];
+  heals = [];
+  const isBossLevel = [20, 40, 60, 80, 100].includes(gameLevel);
+
+  if (isBossLevel) {
+    const bossCount = gameLevel >= 80 ? 4 : gameLevel >= 40 ? 2 : 1;
+    for (let i = 0; i < bossCount; i++) {
+      const bossX = Math.floor(Math.random() * (gridSize - 1));
+      const bossY = Math.floor(Math.random() * (gridSize - 1));
+      enemies.push({
+        isBoss: true,
+        x: bossX,
+        y: bossY,
+        hp: 3 * (2 ** (gameLevel - 1)) * 4,
+        atk: 1 * (2 ** (gameLevel - 1)) * 4,
+        light: { x: 0, y: 0 },
+        dark: { x: 1, y: 1 }
+      });
     }
+    return;
+  }
 
-    // Player
-    if (playerSprite.complete) ctx.drawImage(playerSprite, (player.x - cameraOffset.x) * tileSize, (player.y - cameraOffset.y) * tileSize, tileSize, tileSize);
-    ctx.font = "16px Arial";
-    drawStrokedText(`${player.hp}/${player.maxHp}`, (player.x - cameraOffset.x) * tileSize + 5, (player.y - cameraOffset.y) * tileSize + 20, "blue");
-    drawStrokedText(player.atk, (player.x - cameraOffset.x) * tileSize + 5, (player.y - cameraOffset.y) * tileSize + tileSize - 5, "red");
-
-    // Enemies
-    enemies.forEach(e => {
-      if (e.isBoss && bossImage.complete) {
-        const bx = e.x * tileSize;
-        const by = e.y * tileSize;
-        ctx.drawImage(bossImage, bx, by, tileSize * 2, tileSize * 2);
-
-        // Overlay colors
-        ctx.globalAlpha = 0.3;
-        ctx.fillStyle = "fuchsia";
-        ctx.fillRect(bx, by, tileSize * 2, tileSize);
-        ctx.fillStyle = "lime";
-        ctx.fillRect(bx, by + tileSize, tileSize * 2, tileSize);
-        ctx.globalAlpha = 0.2;
-        ctx.fillStyle = "black";
-        ctx.fillRect(bx + e.dark.x * tileSize, by + e.dark.y * tileSize, tileSize, tileSize);
-        ctx.globalAlpha = 0.2;
-        ctx.fillStyle = "white";
-        ctx.fillRect(bx + e.light.x * tileSize, by + e.light.y * tileSize, tileSize, tileSize);
-        ctx.globalAlpha = 1.0;
-
-        drawStrokedText(e.hp, bx + 5, by + 20, "yellow");
-        drawStrokedText(e.atk, bx + 5, by + tileSize * 2 - 10, "orange");
-        return;
-      }
-      if (enemyImage.complete) ctx.drawImage(enemyImage, e.x * tileSize, e.y * tileSize, tileSize, tileSize);
-      drawStrokedText(e.hp, e.x * tileSize + 5, e.y * tileSize + 20, "yellow");
-      drawStrokedText(e.atk, e.x * tileSize + 5, e.y * tileSize + tileSize - 5, "orange");
-
-      // Directional shield lines
-      const bx = e.x * tileSize;
-      const by = e.y * tileSize;
-      ctx.fillStyle = "rgba(255,0,0,0.6)";
-      if (e.shields.up) ctx.fillRect(bx + tileSize * 0.25, by, tileSize * 0.5, 5);
-      if (e.shields.down) ctx.fillRect(bx + tileSize * 0.25, by + tileSize - 5, tileSize * 0.5, 5);
-      if (e.shields.left) ctx.fillRect(bx, by + tileSize * 0.25, 5, tileSize * 0.5);
-      if (e.shields.right) ctx.fillRect(bx + tileSize - 5, by + tileSize * 0.25, 5, tileSize * 0.5);
-    });
-
-    // Power-ups
-    powerUps.forEach(p => {
-      const orbImg = p.type === "purple" ? purpleOrbImage : pinkOrbImage;
-      if (orbImg.complete) ctx.drawImage(orbImg, p.x * tileSize + tileSize / 4, p.y * tileSize + tileSize / 4, tileSize / 2, tileSize / 2);
-    });
-
-    // Drop flash "!!!"
-    const now = Date.now();
-    dropFlashes.forEach(flash => {
-      const elapsed = now - flash.startTime;
-      if (elapsed < 1000) {
-        const alpha = 1 - (elapsed / 1000);
-        const offsetY = (elapsed / 1000) * 20;
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = "black";
-        ctx.font = "bold 20px Arial";
-        ctx.fillText("!!!", flash.x * tileSize + tileSize / 2 - 15, flash.y * tileSize + tileSize / 2 - offsetY);
-        ctx.restore();
-      }
-    });
-
-    // Stat text popups
-    if (showStatText) {
-      drawStrokedText(showStatText, player.x * tileSize + 25, player.y * tileSize + tileSize - 35, "black");
+  const enemyCount = Math.floor((gameLevel * 1.5) + 1);
+  for (let i = 0; i < enemyCount; i++) {
+    const x = Math.floor(Math.random() * gridSize);
+    const y = Math.floor(Math.random() * gridSize);
+    if ((x !== player.x || y !== player.y) && !enemies.some(e => e.x === x && e.y === y)) {
+      enemies.push({
+        x,
+        y,
+        hp: 3 * (2 ** (gameLevel - 1)),
+        atk: 1 * (2 ** (gameLevel - 1)),
+        shields: { up: true, down: true, left: true, right: true }
+      });
     }
-  } catch (e) {
-    logDebug("[ERROR] draw() failed: " + e.message);
-    console.error(e);
   }
 }
 
-// === Input & Combat Logic ===
+function initGame() {
+  logDebug("Initializing game state");
+  gridSize = 2;
+  gameLevel = 1;
+  firstMove = true;
+  player = {
+    x: 0,
+    y: 0,
+    maxHp: 10 + persistentStats.hp,
+    hp: 10 + persistentStats.hp,
+    atk: 3 + persistentStats.atk,
+    lvl: 1
+  };
+  maxPlayerLevel = 1;
+  playerSprite = playerImage;
+  resetPlayerPosition();
+  spawnEnemies();
+  updateCounters();
+  saveGame();
+  draw();
+}
+
+function drawStrokedText(text, x, y, fill, stroke = "black") {
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = stroke;
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = fill;
+  ctx.fillText(text, x, y);
+}
+}
+
 function handleMove(dx, dy) {
   logDebug(`Player input: dx=${dx}, dy=${dy}`);
   if (firstMove) {
-    showLevelTextMsg("LEVEL 1");
     firstMove = false;
+    showLevelTextMsg("LEVEL 1");
   }
-
   const newX = player.x + dx;
   const newY = player.y + dy;
   if (newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize) return;
@@ -364,21 +328,15 @@ function handleMove(dx, dy) {
     if (e.isBoss) return newX >= e.x && newX < e.x + 2 && newY >= e.y && newY < e.y + 2;
     return e.x === newX && e.y === newY;
   });
+
   if (enemy) {
-    try { playerSprite = playerAttackImage; } catch (e) { logDebug("[ERROR] Sprite change failed: " + e.message); }
+    playerSprite = playerAttackImage;
     setTimeout(() => { playerSprite = playerImage; draw(); }, 150);
 
-    // Alternate attack sounds
-    if (attackToggle) {
-      sfxAttack2.currentTime = 0;
-      sfxAttack2.play();
-    } else {
-      sfxAttack.currentTime = 0;
-      sfxAttack.play();
-    }
+    (attackToggle ? sfxAttack2 : sfxAttack).play();
     attackToggle = !attackToggle;
 
-    let direction = dx === 1 ? 'left' : dx === -1 ? 'right' : dy === 1 ? 'up' : 'down';
+    const direction = dx === 1 ? 'left' : dx === -1 ? 'right' : dy === 1 ? 'up' : 'down';
     let noDamage = false;
 
     if (enemy.isBoss) {
@@ -387,7 +345,6 @@ function handleMove(dx, dy) {
       const isLight = (relX === enemy.light.x && relY === enemy.light.y);
       const isDark = (relX === enemy.dark.x && relY === enemy.dark.y);
 
-      // Randomize light/dark after each attack
       enemy.light = { x: Math.floor(Math.random() * 2), y: Math.floor(Math.random() * 2) };
       do {
         enemy.dark = { x: Math.floor(Math.random() * 2), y: Math.floor(Math.random() * 2) };
@@ -395,47 +352,109 @@ function handleMove(dx, dy) {
 
       if (isDark) {
         noDamage = true;
-        sfxNoDamage.currentTime = 0;
         sfxNoDamage.play();
       }
       if (isLight) {
         enemy.hp -= player.atk * 2;
-        return;
       }
     } else if (enemy.shields[direction]) {
       noDamage = true;
+      enemy.shields[direction] = false;
+      sfxNoDamage.play();
+    } else {
+      player.hp -= enemy.atk;
     }
-    enemy.shields[direction] = false;
-    sfxNoDamage.currentTime = 0;
-    sfxNoDamage.play();
+
+    if (!noDamage) player.hp -= enemy.atk;
+    enemy.hp -= player.atk;
+
+    if (player.hp <= 0) {
+      deaths++;
+      updateCounters();
+      playerSprite = playerDeathImage;
+      sfxDeath.play();
+      draw();
+      saveGame();
+      setTimeout(() => initGame(), 1000);
+      return;
+    }
+
+    if (enemy.hp <= 0) {
+      sfxDeath.play();
+      enemies = enemies.filter(e => e !== enemy);
+      if (!enemy.isBoss) {
+        if (Math.random() < 0.66) {
+          const orbType = Math.random() < 0.5 ? "purple" : "pink";
+          powerUps.push({ x: enemy.x, y: enemy.y, type: orbType });
+        }
+      } else {
+        for (let i = 0; i < 4; i++) {
+          const offsetX = i % 2;
+          const offsetY = Math.floor(i / 2);
+          if (Math.random() < 0.66) {
+            const orbType = Math.random() < 0.5 ? "purple" : "pink";
+            powerUps.push({ x: enemy.x + offsetX, y: enemy.y + offsetY, type: orbType });
+          }
+        }
+      }
+
+      const diff = player.maxHp - player.hp;
+      const healAmount = Math.round(diff / 4);
+      player.hp = Math.min(player.hp + healAmount, player.maxHp);
+
+      if (enemies.length === 0) {
+        showLevelTextMsg(`LEVEL ${gameLevel + 1}`);
+        setTimeout(() => {
+          gameLevel++;
+          gridSize++;
+          resetPlayerPosition();
+          spawnEnemies();
+          if (gameLevel % 2 === 1) showUpgradeMenu();
+          draw();
+        }, 2000);
+        return;
+      }
+    }
   } else {
     const orb = powerUps.find(p => p.x === newX && p.y === newY);
     if (orb) {
       if (orb.type === "purple") {
         player.atk += 3;
-        showStatTextForDuration("ATK UP!");
+        showStatText = "ATK UP!";
       } else {
         player.maxHp += 5;
         player.hp = Math.min(player.hp + 5, player.maxHp);
-        showStatTextForDuration("HP UP!");
+        showStatText = "HP UP!";
       }
       player.lvl++;
       if (player.lvl > maxPlayerLevel) maxPlayerLevel = player.lvl;
       powerUps = powerUps.filter(p => p !== orb);
       updateCounters();
     }
+
     player.x = newX;
     player.y = newY;
   }
-
-  updateDropFlashes();
-  updateBloodSplatters();
+  updateCounters();
+      playerSprite = playerDeathImage;
+      draw();
+      setTimeout(() => initGame(), 1000);
+      return;
+    }
+    if (enemy.hp <= 0) {
+      sfxDeath.play();
+      enemies = enemies.filter(e => e !== enemy);
+    }
+  } else {
+    player.x = newX;
+    player.y = newY;
+  }
   updateCounters();
   draw();
 }
 
-// === Controls ===
 document.addEventListener("keydown", (e) => {
+  logDebug(`Key pressed: ${e.key}`);
   switch (e.key) {
     case "ArrowUp":
     case "w": handleMove(0, -1); break;
@@ -446,12 +465,20 @@ document.addEventListener("keydown", (e) => {
     case "ArrowRight":
     case "d": handleMove(1, 0); break;
   }
-function updateCounters() {
-  deathCounterText.innerText = `Deaths: ${deaths}`;
-  levelCounter.innerText = `Level: ${player.lvl} | Max: ${maxPlayerLevel} | +HP:${persistentStats.hp} +ATK:${persistentStats.atk}`;
+});
+
+function showLevelTextMsg(text) {
+  levelText.innerText = text;
+  levelText.style.display = "block";
+  setTimeout(() => { levelText.style.display = "none"; }, 2000);
+}
+
 function startGame() {
+  loadSaveFile();
   logDebug("Starting game");
   initGame();
+}
+
 window.onload = () => {
   try {
     startGame();
@@ -460,4 +487,3 @@ window.onload = () => {
     console.error(e);
   }
 };
-
