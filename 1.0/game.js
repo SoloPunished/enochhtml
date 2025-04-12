@@ -4,6 +4,8 @@
 
 // === Setup & Element References ===
 document.body.style.backgroundColor = "black";
+document.body.style.margin = "0";
+document.body.style.height = "100vh";
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const levelText = document.getElementById("levelText");
@@ -70,7 +72,7 @@ function loadSaveFile() {
     .then(text => {
       const lines = text.split(/
 ?
-/);
+/); // fixed newline parsing
       lines.forEach(line => {
         const [key, val] = line.split(":");
         if (key && val !== undefined) {
@@ -435,11 +437,7 @@ function handleMove(dx, dy) {
     player.x = newX;
     player.y = newY;
   }
-  updateCounters();
-      playerSprite = playerDeathImage;
-      draw();
-      setTimeout(() => initGame(), 1000);
-      return;
+  
     }
     if (enemy.hp <= 0) {
       sfxDeath.play();
