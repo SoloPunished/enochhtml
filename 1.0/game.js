@@ -68,8 +68,9 @@ function loadSaveFile() {
   fetch("../log.txt")
     .then(res => res.text())
     .then(text => {
-      const lines = text.split(/\r?\n/);
-
+      const lines = text.split(/
+?
+/);
       lines.forEach(line => {
         const [key, val] = line.split(":");
         if (key && val !== undefined) {
@@ -311,8 +312,7 @@ function drawStrokedText(text, x, y, fill, stroke = "black") {
   ctx.strokeText(text, x, y);
   ctx.fillStyle = fill;
   ctx.fillText(text, x, y);
-}
-}
+
 
 function handleMove(dx, dy) {
   logDebug(`Player input: dx=${dx}, dy=${dy}`);
