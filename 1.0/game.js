@@ -352,8 +352,6 @@ function draw() {
     drawStrokedText(showStatText, player.x * tileSize + 25, player.y * tileSize + tileSize - 35, "black");
   }
 }
-
-// === Input & Combat Logic ===
 function handleMove(dx, dy) {
   logDebug(`Player input: dx=${dx}, dy=${dy}`);
   if (firstMove) {
@@ -369,21 +367,15 @@ function handleMove(dx, dy) {
     if (e.isBoss) return newX >= e.x && newX < e.x + 2 && newY >= e.y && newY < e.y + 2;
     return e.x === newX && e.y === newY;
   });
+
   if (enemy) {
-    try { playerSprite = playerAttackImage; } catch (e) { logDebug("[ERROR] Sprite change failed: " + e.message); }
+    playerSprite = playerAttackImage;
     setTimeout(() => { playerSprite = playerImage; draw(); }, 150);
 
-    // Alternate attack sounds
-    if (attackToggle) {
-      sfxAttack2.currentTime = 0;
-      sfxAttack2.play();
-    } else {
-      sfxAttack.currentTime = 0;
-      sfxAttack.play();
-    }
+    (attackToggle ? sfxAttack2 : sfxAttack).play();
     attackToggle = !attackToggle;
 
-    let direction = dx === 1 ? 'left' : dx === -1 ? 'right' : dy === 1 ? 'up' : 'down';
+    const direction = dx === 1 ? 'left' : dx === -1 ? 'right' : dy === 1 ? 'up' : 'down';
     let noDamage = false;
 
     if (enemy.isBoss) {
@@ -392,7 +384,6 @@ function handleMove(dx, dy) {
       const isLight = (relX === enemy.light.x && relY === enemy.light.y);
       const isDark = (relX === enemy.dark.x && relY === enemy.dark.y);
 
-      // Randomize light/dark after each attack
       enemy.light = { x: Math.floor(Math.random() * 2), y: Math.floor(Math.random() * 2) };
       do {
         enemy.dark = { x: Math.floor(Math.random() * 2), y: Math.floor(Math.random() * 2) };
@@ -400,7 +391,6 @@ function handleMove(dx, dy) {
 
       if (isDark) {
         noDamage = true;
-        sfxNoDamage.currentTime = 0;
         sfxNoDamage.play();
       }
       if (isLight) {
@@ -408,11 +398,8 @@ function handleMove(dx, dy) {
         return;
       }
     } else if (enemy.shields[direction]) {
-      
       noDamage = true;
-    }
       enemy.shields[direction] = false;
-      sfxNoDamage.currentTime = 0;
       sfxNoDamage.play();
     } else {
       player.hp -= enemy.atk;
@@ -424,18 +411,18 @@ function handleMove(dx, dy) {
     if (player.hp <= 0) return resetGame();
 
     if (enemy.hp <= 0) {
-      sfxDeath.currentTime = 0;
       sfxDeath.play();
       bloodSplatters.push({ x: enemy.x, y: enemy.y, startTime: Date.now(), duration: 1000 });
       enemies = enemies.filter(e => e !== enemy);
-      if (!enemy.isBoss) enemy.shields = { up: false, down: false, left: false, right: false };
 
-      if (!enemy.isBoss && Math.random() < 0.66) {
-        const orbType = Math.random() < 0.5 ? "purple" : "pink";
-        powerUps.push({ x: enemy.x, y: enemy.y, type: orbType });
-        dropFlashes.push({ x: enemy.x, y: enemy.y, startTime: Date.now() });
-      }
-      if (enemy.isBoss) {
+      if (!enemy.isBoss) {
+        enemy.shields = { up: false, down: false, left: false, right: false };
+        if (Math.random() < 0.66) {
+          const orbType = Math.random() < 0.5 ? "purple" : "pink";
+          powerUps.push({ x: enemy.x, y: enemy.y, type: orbType });
+          dropFlashes.push({ x: enemy.x, y: enemy.y, startTime: Date.now() });
+        }
+      } else {
         for (let i = 0; i < 4; i++) {
           const offsetX = i % 2;
           const offsetY = Math.floor(i / 2);
@@ -446,47 +433,46 @@ function handleMove(dx, dy) {
           }
         }
       }
-      }
 
-      let diff = player.maxHp - player.hp;
-      let healAmount = Math.round(diff / 4);
+      // Heal player on kill
+      const diff = player.maxHp - player.hp;
+      const healAmount = Math.round(diff / 4);
       player.hp = Math.min(player.hp + healAmount, player.maxHp);
 
       if (enemies.length === 0) {
-  showLevelTextMsg(`LEVEL ${gameLevel + 1}`);
-  setTimeout(() => {
-    gameLevel++;
-    gridSize++;
-    resetPlayerPosition();
-    spawnEnemies();
-    if (gameLevel % 2 === 1) showUpgradeMenu();
-    draw();
-  }, 2000);
-        resetPlayerPosition();
-        spawnEnemies();
-        showLevelTextMsg(`LEVEL ${gameLevel}`);
-        if (gameLevel % 2 === 1) showUpgradeMenu();
+        showLevelTextMsg(`LEVEL ${gameLevel + 1}`);
+        setTimeout(() => {
+          gameLevel++;
+          gridSize++;
+          resetPlayerPosition();
+          spawnEnemies();
+          if (gameLevel % 2 === 1) showUpgradeMenu();
+          draw();
+        }, 2000);
+        return;
       }
     }
-  } else {
-    const orb = powerUps.find(p => p.x === newX && p.y === newY);
-    if (orb) {
-      if (orb.type === "purple") {
-        player.atk += 3;
-        showStatTextForDuration("ATK UP!");
-      } else {
-        player.maxHp += 5;
-        player.hp = Math.min(player.hp + 5, player.maxHp);
-        showStatTextForDuration("HP UP!");
-      }
-      player.lvl++;
-      if (player.lvl > maxPlayerLevel) maxPlayerLevel = player.lvl;
-      powerUps = powerUps.filter(p => p !== orb);
-      updateCounters();
-    }
-    player.x = newX;
-    player.y = newY;
   }
+
+  // Orb collection and movement (only if no enemy present or enemy didn't block move)
+  const orb = powerUps.find(p => p.x === newX && p.y === newY);
+  if (orb) {
+    if (orb.type === "purple") {
+      player.atk += 3;
+      showStatTextForDuration("ATK UP!");
+    } else {
+      player.maxHp += 5;
+      player.hp = Math.min(player.hp + 5, player.maxHp);
+      showStatTextForDuration("HP UP!");
+    }
+    player.lvl++;
+    if (player.lvl > maxPlayerLevel) maxPlayerLevel = player.lvl;
+    powerUps = powerUps.filter(p => p !== orb);
+    updateCounters();
+  }
+
+  player.x = newX;
+  player.y = newY;
 
   updateDropFlashes();
   updateBloodSplatters();
