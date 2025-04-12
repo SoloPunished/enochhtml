@@ -254,7 +254,6 @@ function showUpgradeMenu() {
     persistentStats.atk++;
     document.body.removeChild(menu);
   };
-}
 
 // === Drawing Logic ===
 function draw() {
