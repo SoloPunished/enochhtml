@@ -449,11 +449,9 @@ document.addEventListener("keydown", (e) => {
 function updateCounters() {
   deathCounterText.innerText = `Deaths: ${deaths}`;
   levelCounter.innerText = `Level: ${player.lvl} | Max: ${maxPlayerLevel} | +HP:${persistentStats.hp} +ATK:${persistentStats.atk}`;
-}
 function startGame() {
   logDebug("Starting game");
   initGame();
-}
 window.onload = () => {
   try {
     startGame();
@@ -462,3 +460,4 @@ window.onload = () => {
     console.error(e);
   }
 };
+
