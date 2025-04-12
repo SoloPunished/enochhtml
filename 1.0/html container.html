@@ -4,68 +4,71 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ENOCH 1.04</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
-      background: #f0f0f0;
-    }
+ <style>
+  body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    background: #000; /* Night mode background */
+    color: #fff;      /* Inverted text color */
+  }
 
-    #gameArea {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: start;
-      padding-top: 10px;
-    }
+  #gameArea {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: start;
+    padding-top: 10px;
+  }
 
-    canvas {
-      border: 2px solid #000;
-      background: #eee;
-    }
+  canvas {
+    border: 2px solid #000;
+    background: #111; /* Dark canvas background */
+  }
 
-    h1 {
-      margin: 10px 0;
-    }
+  h1 {
+    margin: 10px 0;
+    color: #fff; /* White header text */
+  }
 
-    #counters {
-      display: flex;
-      justify-content: center;
-      gap: 40px;
-      font-size: 20px;
-      margin: 5px 0 10px;
-    }
+  #counters {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    font-size: 20px;
+    margin: 5px 0 10px;
+    color: #fff; /* White counter text */
+  }
 
-    #levelText {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 48px;
-      font-weight: bold;
-      color: black;
-      background: rgba(255, 255, 255, 0.8);
-      padding: 20px;
-      border-radius: 10px;
-      display: none;
-      z-index: 1000;
-    }
+  #levelText {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    font-weight: bold;
+    color: white; /* Text color */
+    background: rgba(0, 0, 0, 0.8); /* Dark semi-transparent box */
+    padding: 20px;
+    border-radius: 10px;
+    display: none;
+    z-index: 1000;
+  }
 
-    #debugConsole {
-      width: 360px;
-      background: rgba(0, 0, 0, 0.85);
-      color: lime;
-      font-size: 12px;
-      font-family: monospace;
-      overflow-y: auto;
-      padding: 10px;
-    }
-  </style>
+  #debugConsole {
+    width: 360px;
+    background: rgba(0, 0, 0, 0.85);
+    color: lime;
+    font-size: 12px;
+    font-family: monospace;
+    overflow-y: auto;
+    padding: 10px;
+  }
+</style>
 </head>
 <body>
   <div id="gameArea">
