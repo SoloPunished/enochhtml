@@ -20,6 +20,13 @@ debugConsole.style.padding = "10px";
 debugConsole.style.zIndex = 9999;
 document.body.appendChild(debugConsole);
 
+// Get canvas and UI references early
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const levelText = document.getElementById("levelText");
+const deathCounterText = document.getElementById("deathCounter");
+const levelCounter = document.getElementById("levelCounter");
+
 function logDebug(msg) {
   const entry = document.createElement("div");
   entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
