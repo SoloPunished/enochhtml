@@ -31,6 +31,7 @@ function logDebug(msg) {
   debugConsole.appendChild(entry);
   debugConsole.scrollTop = debugConsole.scrollHeight;
 }
+
 // === Audio ===
 const bgMusic = new Audio("../Sound/perkristian-map18.mp3");
 bgMusic.loop = true;
@@ -446,5 +447,23 @@ document.addEventListener("keydown", (e) => {
     case "d": handleMove(1, 0); break;
   }
 });
+function updateCounters() {
+  deathCounterText.innerText = `Deaths: ${deaths}`;
+  levelCounter.innerText = `Level: ${player.lvl} | Max: ${maxPlayerLevel} | +HP:${persistentStats.hp} +ATK:${persistentStats.atk}`;
+}
+
+function startGame() {
+  logDebug("Starting game");
+  initGame();
+}
+
+window.onload = () => {
+  try {
+    startGame();
+  } catch (e) {
+    logDebug("[ERROR] Failed to start game: " + e.message);
+    console.error(e);
+  }
+};
 
 
