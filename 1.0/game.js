@@ -2,7 +2,12 @@
 // ENOCH RPG - Main Game Logic
 // ============================
 
-// === Setup & Image Loading ===
+// === Setup & Element References ===
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const levelText = document.getElementById("levelText");
+const deathCounterText = document.getElementById("deathCounter");
+const levelCounter = document.getElementById("levelCounter");
 
 // Debug Console
 const debugConsole = document.createElement("div");
@@ -20,21 +25,13 @@ debugConsole.style.padding = "10px";
 debugConsole.style.zIndex = 9999;
 document.body.appendChild(debugConsole);
 
-// Get canvas and UI references early
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const levelText = document.getElementById("levelText");
-const deathCounterText = document.getElementById("deathCounter");
-const levelCounter = document.getElementById("levelCounter");
-
 function logDebug(msg) {
   const entry = document.createElement("div");
   entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
   debugConsole.appendChild(entry);
   debugConsole.scrollTop = debugConsole.scrollHeight;
 }
-
-// Sound files located in 'Sound/' directory (one level above '1.0/')
+// === Audio ===
 const bgMusic = new Audio("../Sound/perkristian-map18.mp3");
 bgMusic.loop = true;
 bgMusic.volume = 0.25;
@@ -47,27 +44,21 @@ const sfxAttack2 = new Audio("../Sound/player attack 2.mp3");
 const sfxNoDamage = new Audio("../Sound/attack no damage.mp3");
 const sfxDeath = new Audio("../Sound/creature death.mp3");
 
-// Image files located in 'enochhtml/' (main directory)
+// === Images ===
 const playerImage = new Image();
-playerImage.src = "../player.png";  // Image is in the main directory (enochhtml/)
-
+playerImage.src = "../player.png";
 const playerAttackImage = new Image();
-playerAttackImage.src = "../player attack.png";  // Image is in the main directory (enochhtml/)
-
+playerAttackImage.src = "../player attack.png";
 const playerDeathImage = new Image();
-playerDeathImage.src = "../player death.png";  // Image is in the main directory (enochhtml/)
-
+playerDeathImage.src = "../player death.png";
 const enemyImage = new Image();
-enemyImage.src = "../enemy.png";  // Image is in the main directory (enochhtml/)
-
+enemyImage.src = "../enemy.png";
 const purpleOrbImage = new Image();
-purpleOrbImage.src = "../attack point up.png";  // Image is in the main directory (enochhtml/)
-
+purpleOrbImage.src = "../attack point up.png";
 const pinkOrbImage = new Image();
-pinkOrbImage.src = "../health point up.png";  // Image is in the main directory (enochhtml/)
-
+pinkOrbImage.src = "../health point up.png";
 const bossImage = new Image();
-bossImage.src = "../boss.png";  // Image is in the main directory (enochhtml/)
+bossImage.src = "../boss.png";
 
 // === Game State Variables ===
 let cameraOffset = { x: 0, y: 0 };
@@ -87,6 +78,7 @@ let bloodSplatters = [];
 let showStatText = null;
 let persistentStats = { hp: 0, atk: 0 };
 let playerSprite = playerImage;
+let attackToggle = false;
 
 // === Utilities ===
 function updateBloodSplatters() {
@@ -455,17 +447,4 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// === Game Start ===
-function startGame() {
-  logDebug("Starting game");
-  initGame();
-}
 
-window.onload = () => {
-  try {
-    startGame();
-  } catch (e) {
-    logDebug("[ERROR] Failed to start game: " + e.message);
-    console.error(e);
-  }
-};
