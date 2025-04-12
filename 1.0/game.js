@@ -1,5 +1,5 @@
 // ============================
-// ENOCH RPG - Main Game Logic
+// ENOCH RPG - Main Game Logic (Fully Fixed)
 // ============================
 
 // === Setup & Element References ===
@@ -66,6 +66,7 @@ let cameraOffset = { x: 0, y: 0 };
 let viewTiles;
 const tileSize = 100;
 viewTiles = Math.floor(canvas.width / tileSize);
+let gridSize = 2;
 let deaths = 0;
 let gameLevel = 1;
 let maxPlayerLevel = 1;
@@ -446,7 +447,7 @@ document.addEventListener("keydown", (e) => {
     case "ArrowRight":
     case "d": handleMove(1, 0); break;
   }
-});
+
 function updateCounters() {
   deathCounterText.innerText = `Deaths: ${deaths}`;
   levelCounter.innerText = `Level: ${player.lvl} | Max: ${maxPlayerLevel} | +HP:${persistentStats.hp} +ATK:${persistentStats.atk}`;
