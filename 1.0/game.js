@@ -27,40 +27,40 @@ function logDebug(msg) {
   debugConsole.scrollTop = debugConsole.scrollHeight;
 }
 
-// Update to local file paths for sound
-const bgMusic = new Audio("Sound/perkristian-map18.mp3");
+// Sound files located in 'Sound/' directory (one level above '1.0/')
+const bgMusic = new Audio("../Sound/perkristian-map18.mp3");
 bgMusic.loop = true;
 bgMusic.volume = 0.25;
 window.addEventListener("keydown", () => {
   if (bgMusic.paused) bgMusic.play();
 }, { once: true });
 
-const sfxAttack = new Audio("Sound/player attack.mp3");
-const sfxAttack2 = new Audio("Sound/player attack 2.mp3");
-const sfxNoDamage = new Audio("Sound/attack no damage.mp3");
-const sfxDeath = new Audio("Sound/creature death.mp3");
+const sfxAttack = new Audio("../Sound/player attack.mp3");
+const sfxAttack2 = new Audio("../Sound/player attack 2.mp3");
+const sfxNoDamage = new Audio("../Sound/attack no damage.mp3");
+const sfxDeath = new Audio("../Sound/creature death.mp3");
 
-// Update to local file paths for images
+// Image files located in 'enochhtml/' (main directory)
 const playerImage = new Image();
-playerImage.src = "player.png";  // Local image path
+playerImage.src = "../player.png";  // Image is in the main directory (enochhtml/)
 
 const playerAttackImage = new Image();
-playerAttackImage.src = "player attack.png";  // Local image path
+playerAttackImage.src = "../player attack.png";  // Image is in the main directory (enochhtml/)
 
 const playerDeathImage = new Image();
-playerDeathImage.src = "player death.png";  // Local image path
+playerDeathImage.src = "../player death.png";  // Image is in the main directory (enochhtml/)
 
 const enemyImage = new Image();
-enemyImage.src = "enemy.png";  // Local image path
+enemyImage.src = "../enemy.png";  // Image is in the main directory (enochhtml/)
 
 const purpleOrbImage = new Image();
-purpleOrbImage.src = "attack point up.png";  // Local image path
+purpleOrbImage.src = "../attack point up.png";  // Image is in the main directory (enochhtml/)
 
 const pinkOrbImage = new Image();
-pinkOrbImage.src = "health point up.png";  // Local image path
+pinkOrbImage.src = "../health point up.png";  // Image is in the main directory (enochhtml/)
 
 const bossImage = new Image();
-bossImage.src = "boss.png";  // Local image path
+bossImage.src = "../boss.png";  // Image is in the main directory (enochhtml/)
 
 // === Game State Variables ===
 let cameraOffset = { x: 0, y: 0 };
