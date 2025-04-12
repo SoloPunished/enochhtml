@@ -1,5 +1,5 @@
 // ============================
-// ENOCH RPG - Main Game Logic (Fully Fixed)
+// ENOCH RPG - Main Game Logic
 // ============================
 
 // === Setup & Element References ===
