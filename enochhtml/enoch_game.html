@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ENOCH RPG</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: monospace;
+      background: #111;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin-top: 10px;
+    }
+    #gameContainer {
+      position: relative;
+      display: inline-block;
+      margin: 10px;
+    }
+    canvas {
+      background-color: #000;
+      display: block;
+    }
+    #hud {
+      display: flex;
+      justify-content: space-between;
+      width: 90vw;
+      max-width: 800px;
+      margin-top: 5px;
+      font-size: 16px;
+    }
+    #levelupMenu {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      padding: 20px;
+      border: 2px solid white;
+      display: none;
+      flex-direction: row;
+      justify-content: center;
+      gap: 20px;
+      z-index: 10;
+    }
+    #levelupMenu img {
+      cursor: pointer;
+      width: 64px;
+      height: 64px;
+    }
+    #overlayText {
+      position: absolute;
+      width: 100%;
+      top: 40%;
+      text-align: center;
+      font-size: 48px;
+      color: white;
+      text-shadow: 2px 2px black;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <h1>ENOCH</h1>
+  <div id="hud">
+    <div id="maxLevel">MAX LEVEL: 1</div>
+    <div id="charLevel">LEVEL: 1</div>
+    <div id="sessionTime">SESSION TIME: 00:00</div>
+    <div id="deathCount">DEATHS: 0</div>
+  </div>
+  <div id="gameContainer">
+    <canvas id="gameCanvas"></canvas>
+    <div id="levelupMenu">
+      <img id="healthUp" title="Increase Max Health" />
+      <img id="attackUp" title="Increase Attack" />
+    </div>
+    <div id="overlayText"></div>
+  </div>
+
+  <script>
+    const attackPointUpImage = new Image(); attackPointUpImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/attack%20point%20up.png";
+    const bossImage = new Image(); bossImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/boss.png";
+    const enemyImage = new Image(); enemyImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/enemy.png";
+    const healthPointUpImage = new Image(); healthPointUpImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/health%20point%20up.png";
+    const playerAttackImage = new Image(); playerAttackImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player%20attack.png";
+    const playerDeathImage = new Image(); playerDeathImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player%20death.png";
+    const playerImage = new Image(); playerImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/player.png";
+
+    // Placeholder orb images - replace with actual images if desired
+    const purpleOrbImage = new Image(); purpleOrbImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/purple_orb.png";
+    const pinkOrbImage = new Image(); pinkOrbImage.src = "https://raw.githubusercontent.com/SoloPunished/enochhtml/main/pink_orb.png";
+
+    document.getElementById("healthUp").src = healthPointUpImage.src;
+    document.getElementById("attackUp").src = attackPointUpImage.src;
+  </script>
+  <script src="game.js"></script>
+</body>
+</html>
