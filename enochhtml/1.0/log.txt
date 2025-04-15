@@ -1,4 +1,0 @@
-deaths:0
-maxLevel:1
-hpBonus:0
-atkBonus:0
